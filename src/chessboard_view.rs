@@ -1,8 +1,8 @@
 use graphics;
 use graphics::types::Color;
-//use graphics::{Graphics[>, Context<]};
+use graphics::{Graphics, Context, ImageSize};
 //use graphics::context::Context;
-use opengl_graphics::{Texture, TextureSettings};
+use opengl_graphics::{GlGraphics, Texture, TextureSettings};
 use std::path::Path;
 use crate::ChessboardController;
 use crate::piece::{Piece, Side};
@@ -65,6 +65,10 @@ pub struct ChessboardView {
     pub settings: ChessboardViewSettings,
 }
 
+fn draw_texture<G, T>(c: &Context, g: &mut G)
+        where G: Graphics<Texture = T>, T: ImageSize {
+    }
+
 impl ChessboardView {
     pub fn new(settings: ChessboardViewSettings) -> ChessboardView {
         ChessboardView {
@@ -72,7 +76,7 @@ impl ChessboardView {
         }
     }
 
-    pub fn draw<G: graphics::Graphics>(&self, controller: &ChessboardController, c: &graphics::context::Context, g: &mut G) {
+    pub fn draw(&self, controller: &ChessboardController, c: &graphics::context::Context, g: &mut GlGraphics) {
         use graphics::{Rectangle, Image};
 
         let ref settings = self.settings;
@@ -97,9 +101,11 @@ impl ChessboardView {
 
 
         // Pieces
-        //let image = Image::new().rect([200.0, 200.0, 200.0, 200.0]);
-        //let texture = Texture::from_path(Path::new("Example.png"), &TextureSettings::new()).unwrap();
-        //image.draw(&texture, &c.draw_state, c.transform, g);
-        //image.draw(settings.textures.get_piece_texture(&controller.chessboard.get_piece_at("e1").unwrap()), &c.draw_state, c.transform, g);
+        let img = Image::new().rect([200.0, 200.0, 200.0, 200.0]);
+        //let texture = opengl_graphics::Texture::from_path(Path::new("Example.png"), &TextureSettings::new()).unwrap();
+        //image(&texture, c.transform, g)
+
+        //img.draw(&texture, &c.draw_state, c.transform, g);
+        img.draw(settings.textures.get_piece_texture(&controller.chessboard.get_piece_at("e1").unwrap()), &c.draw_state, c.transform, g);
     }
 }

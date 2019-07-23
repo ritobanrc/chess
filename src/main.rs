@@ -7,7 +7,9 @@ use piston::window::WindowSettings;
 use piston::event_loop::*;
 use piston::input::*;
 use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{ GlGraphics, OpenGL };
+use opengl_graphics::*;
+use graphics::Transformed;
+use std::path::Path;
 
 mod chessboard;
 mod chessboard_controller;
@@ -44,6 +46,9 @@ fn main() {
     };
     let view = ChessboardView::new(view_settings);
 
+    let rust_logo = Texture::from_path(&Path::new("sprites/light_king.png"),
+&TextureSettings::new()).unwrap();
+
     // Create a new game and run it.
     let mut gl =  GlGraphics::new(opengl);
 
@@ -51,10 +56,12 @@ fn main() {
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {
-                use graphics::{clear};
+                use graphics::{clear, Image};
                 clear([0.0; 4], gl);
-
                 view.draw(&controller, &c, gl);
+                //let transform = c.transform.trans(100.0, 100.0);
+
+                //image(&rust_logo, transform, gl);
             });
         }
 
