@@ -1,5 +1,8 @@
+use piston::input::GenericEvent;
+use crate::Chessboard;
+
 pub struct ChessboardController {
-    chessboard: Chessboard,
+    pub chessboard: Chessboard,
 }
 
 impl ChessboardController {

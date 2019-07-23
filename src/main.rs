@@ -10,24 +10,17 @@ use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{ GlGraphics, OpenGL };
 
 mod chessboard;
+mod chessboard_controller;
+mod chessboard_view;
 mod piece;
 
-pub use crate::chessboard::{Chessboard, ChessboardController, ChessboardView};
+use crate::chessboard::Chessboard;
+use crate::chessboard_controller::ChessboardController;
+use crate::chessboard_view::{ChessboardViewSettings, ChessboardView};
 
-pub struct App {
-    gl: GlGraphics, // OpenGL drawing backend.
-}
 
-impl App {
-    fn render(&mut self, args: &RenderArgs) {
-        self.gl.draw(args.viewport(), |c, gl| {
-            use graphics::{clear};
+pub const BOARD_SIZE: usize = 8;
 
-            clear([0.0; 4], gl);
-        });
-    }
-
-}
 
 fn main() {
     // Change this to OpenGL::V2_1 if not working.
@@ -44,15 +37,25 @@ fn main() {
         .build()
         .unwrap();
 
-    // Create a new game and run it.
-    let mut app = App {
-        gl: GlGraphics::new(opengl),
+    let chessboard = Chessboard::standard();
+    let controller = ChessboardController::new(chessboard);
+    let view_settings = {
+        ChessboardViewSettings::new()
     };
+    let view = ChessboardView::new(view_settings);
+
+    // Create a new game and run it.
+    let mut gl =  GlGraphics::new(opengl);
 
     let mut events = Events::new(EventSettings::new().lazy(true));
     while let Some(e) = events.next(&mut window) {
-        if let Some(r) = e.render_args() {
-            app.render(&r);
+        if let Some(args) = e.render_args() {
+            gl.draw(args.viewport(), |c, gl| {
+                use graphics::{clear};
+                clear([0.0; 4], gl);
+
+                view.draw(&controller, &c, gl);
+            });
         }
 
     }

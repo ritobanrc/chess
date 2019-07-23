@@ -1,13 +1,25 @@
-pub trait Piece {
-    fn get_position(&self) -> [u8; 2];
+#[derive(PartialEq)]
+pub enum Side { Light, Dark }
+
+pub struct PieceData {
+    pub position: [u8; 2], 
+    pub side: Side,
 }
 
-pub struct Pawn {
-    position: [u8; 2]
-}
-
-impl Piece for Pawn {
-    fn get_position(&self) -> [u8; 2] {
-        self.position
+impl PieceData {
+    pub fn new (position: [u8; 2], side: Side) -> PieceData {
+        PieceData {
+            position: position, 
+            side: side,
+        }
     }
+}
+
+pub enum Piece {
+    Pawn(PieceData), 
+    Rook(PieceData), 
+    Knight(PieceData),
+    Bishop(PieceData),
+    Queen(PieceData), 
+    King(PieceData),
 }
