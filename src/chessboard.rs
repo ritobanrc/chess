@@ -8,10 +8,9 @@ pub struct Chessboard {
 
 
 fn create_piece(pieces: &mut HashMap<[u8; 2], Piece>,
-                pos: &'static str,
+                pos: [u8; 2],
                 side: Side,
                 piece_type: &Fn(PieceData) -> Piece) { 
-    let pos =  str_to_pos(pos);
     let data = PieceData::new(pos, side);
     pieces.insert(pos, piece_type(data));
 }
@@ -35,31 +34,43 @@ impl Chessboard {
     pub fn standard() -> Chessboard {
         let mut pieces = HashMap::new();
 
-        create_piece(&mut pieces, "a1", Side::Light, &Piece::Rook);
-        create_piece(&mut pieces, "b1", Side::Light, &Piece::Knight);
-        create_piece(&mut pieces, "c1", Side::Light, &Piece::Bishop);
-        create_piece(&mut pieces, "d1", Side::Light, &Piece::Queen);
-        create_piece(&mut pieces, "e1", Side::Light, &Piece::King);
-        create_piece(&mut pieces, "f1", Side::Light, &Piece::Bishop);
-        create_piece(&mut pieces, "g1", Side::Light, &Piece::Knight);
-        create_piece(&mut pieces, "h1", Side::Light, &Piece::Rook);
+        create_piece(&mut pieces, str_to_pos("a1"), Side::Light, &Piece::Rook);
+        create_piece(&mut pieces, str_to_pos("b1"), Side::Light, &Piece::Knight);
+        create_piece(&mut pieces, str_to_pos("c1"), Side::Light, &Piece::Bishop);
+        create_piece(&mut pieces, str_to_pos("d1"), Side::Light, &Piece::Queen);
+        create_piece(&mut pieces, str_to_pos("e1"), Side::Light, &Piece::King);
+        create_piece(&mut pieces, str_to_pos("f1"), Side::Light, &Piece::Bishop);
+        create_piece(&mut pieces, str_to_pos("g1"), Side::Light, &Piece::Knight);
+        create_piece(&mut pieces, str_to_pos("h1"), Side::Light, &Piece::Rook);
 
-        create_piece(&mut pieces, "a8", Side::Dark, &Piece::Rook);
-        create_piece(&mut pieces, "b8", Side::Dark, &Piece::Knight);
-        create_piece(&mut pieces, "c8", Side::Dark, &Piece::Bishop);
-        create_piece(&mut pieces, "d8", Side::Dark, &Piece::Queen);
-        create_piece(&mut pieces, "e8", Side::Dark, &Piece::King);
-        create_piece(&mut pieces, "f8", Side::Dark, &Piece::Bishop);
-        create_piece(&mut pieces, "g8", Side::Dark, &Piece::Knight);
-        create_piece(&mut pieces, "h8", Side::Dark, &Piece::Rook);
+        create_piece(&mut pieces, str_to_pos("a8"), Side::Dark, &Piece::Rook);
+        create_piece(&mut pieces, str_to_pos("b8"), Side::Dark, &Piece::Knight);
+        create_piece(&mut pieces, str_to_pos("c8"), Side::Dark, &Piece::Bishop);
+        create_piece(&mut pieces, str_to_pos("d8"), Side::Dark, &Piece::Queen);
+        create_piece(&mut pieces, str_to_pos("e8"), Side::Dark, &Piece::King);
+        create_piece(&mut pieces, str_to_pos("f8"), Side::Dark, &Piece::Bishop);
+        create_piece(&mut pieces, str_to_pos("g8"), Side::Dark, &Piece::Knight);
+        create_piece(&mut pieces, str_to_pos("h8"), Side::Dark, &Piece::Rook);
+
+
+
+        // Create pawns
+        for file in 0..8u8 {
+            create_piece(&mut pieces, [file, 1], Side::Light, &Piece::Pawn);
+            create_piece(&mut pieces, [file, 6], Side::Dark, &Piece::Pawn);
+        }
 
         Chessboard {
             pieces: pieces,
         }
     }
 
-    pub fn get_piece_at(&self, pos: &'static str) -> Option<&Piece> {
-        self.pieces.get(&str_to_pos(pos))
+    pub fn get_piece_at(&self, pos: [u8; 2]) -> Option<&Piece> {
+        self.pieces.get(&pos)
+    }
+
+    pub fn get_pieces(&self) -> &HashMap<[u8; 2], Piece> {
+        &self.pieces
     }
 }
 

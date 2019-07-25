@@ -1,7 +1,5 @@
 use graphics;
 use graphics::types::Color;
-use graphics::{Graphics, Context, ImageSize};
-//use graphics::context::Context;
 use opengl_graphics::{GlGraphics, Texture, TextureSettings};
 use std::path::Path;
 use crate::ChessboardController;
@@ -10,19 +8,58 @@ use crate::{BOARD_SIZE};
 
 pub struct ChesspieceTextures {
     pub light_king: Texture,
+    pub light_queen: Texture,
+    pub light_bishop: Texture, 
+    pub light_knight: Texture,
+    pub light_rook: Texture,
+    pub light_pawn: Texture,
+
+    pub dark_king: Texture,
+    pub dark_queen: Texture,
+    pub dark_bishop: Texture, 
+    pub dark_knight: Texture,
+    pub dark_rook: Texture,
+    pub dark_pawn: Texture
 }
 
 impl ChesspieceTextures {
-    pub fn from_paths(light_king_path: &String) -> ChesspieceTextures {
+    pub fn from_paths(light_king_path: &String, 
+                      light_queen_path: &String,
+                      light_bishop_path: &String, 
+                      light_knight_path: &String,
+                      light_rook_path: &String,
+                      light_pawn_path: &String,
+                      dark_king_path: &String, 
+                      dark_queen_path: &String,
+                      dark_bishop_path: &String, 
+                      dark_knight_path: &String,
+                      dark_rook_path: &String,
+                      dark_pawn_path: &String) -> ChesspieceTextures {
+
         ChesspieceTextures {
             light_king: Texture::from_path(Path::new(light_king_path), &TextureSettings::new()).unwrap(),
+            light_queen: Texture::from_path(Path::new(light_queen_path), &TextureSettings::new()).unwrap(),
+            light_bishop: Texture::from_path(Path::new(light_bishop_path), &TextureSettings::new()).unwrap(),
+            light_knight: Texture::from_path(Path::new(light_knight_path), &TextureSettings::new()).unwrap(),
+            light_rook: Texture::from_path(Path::new(light_rook_path), &TextureSettings::new()).unwrap(),
+            light_pawn: Texture::from_path(Path::new(light_pawn_path), &TextureSettings::new()).unwrap(),
+            dark_king: Texture::from_path(Path::new(dark_king_path), &TextureSettings::new()).unwrap(),
+            dark_queen: Texture::from_path(Path::new(dark_queen_path), &TextureSettings::new()).unwrap(),
+            dark_bishop: Texture::from_path(Path::new(dark_bishop_path), &TextureSettings::new()).unwrap(),
+            dark_knight: Texture::from_path(Path::new(dark_knight_path), &TextureSettings::new()).unwrap(),
+            dark_rook: Texture::from_path(Path::new(dark_rook_path), &TextureSettings::new()).unwrap(),
+            dark_pawn: Texture::from_path(Path::new(dark_pawn_path), &TextureSettings::new()).unwrap(),
         }
     }
 
     pub fn get_piece_texture(&self, piece: &Piece) -> &Texture {
         match piece {
-            Piece::King(data) => if data.side == Side::Light { &self.light_king } else { &self.light_king }
-            _ => panic!("Not supported yet")
+            Piece::King(data) => if data.side == Side::Light { &self.light_king } else { &self.dark_king }
+            Piece::Queen(data) => if data.side == Side::Light { &self.light_queen } else { &self.dark_queen }
+            Piece::Bishop(data) => if data.side == Side::Light { &self.light_bishop } else { &self.dark_bishop }
+            Piece::Knight(data) => if data.side == Side::Light { &self.light_knight } else { &self.dark_knight }
+            Piece::Rook(data) => if data.side == Side::Light { &self.light_rook } else { &self.dark_rook }
+            Piece::Pawn(data) => if data.side == Side::Light { &self.light_pawn } else { &self.dark_pawn }
         }
     }
 }
@@ -47,11 +84,22 @@ pub struct ChessboardViewSettings {
 impl ChessboardViewSettings {
     pub fn new() -> ChessboardViewSettings {
         let textures = ChesspieceTextures::from_paths(
-            &String::from("sprites/light_king.png")
+            &String::from("sprites/light_king.png"),
+            &String::from("sprites/light_queen.png"),
+            &String::from("sprites/light_bishop.png"),
+            &String::from("sprites/light_knight.png"),
+            &String::from("sprites/light_rook.png"),
+            &String::from("sprites/light_pawn.png"),
+            &String::from("sprites/dark_king.png"),
+            &String::from("sprites/dark_queen.png"),
+            &String::from("sprites/dark_bishop.png"),
+            &String::from("sprites/dark_knight.png"),
+            &String::from("sprites/dark_rook.png"),
+            &String::from("sprites/dark_pawn.png")
             );
         ChessboardViewSettings {
-            position: [6.0; 2],
-            size: 500.0,
+            position: [5.0; 2],
+            size: 800.0,
             light_square_color: [0.961, 0.961, 0.863, 1.0],
             dark_square_color: [0.545, 0.271, 0.075, 1.0],
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
@@ -64,10 +112,6 @@ impl ChessboardViewSettings {
 pub struct ChessboardView {
     pub settings: ChessboardViewSettings,
 }
-
-fn draw_texture<G, T>(c: &Context, g: &mut G)
-        where G: Graphics<Texture = T>, T: ImageSize {
-    }
 
 impl ChessboardView {
     pub fn new(settings: ChessboardViewSettings) -> ChessboardView {
@@ -100,12 +144,11 @@ impl ChessboardView {
             .draw(board_rect, &c.draw_state, c.transform, g);
 
 
-        // Pieces
-        let img = Image::new().rect([200.0, 200.0, 200.0, 200.0]);
-        //let texture = opengl_graphics::Texture::from_path(Path::new("Example.png"), &TextureSettings::new()).unwrap();
-        //image(&texture, c.transform, g)
-
-        //img.draw(&texture, &c.draw_state, c.transform, g);
-        img.draw(settings.textures.get_piece_texture(&controller.chessboard.get_piece_at("e1").unwrap()), &c.draw_state, c.transform, g);
+        for (pos, piece) in controller.chessboard.get_pieces() {
+            let img = Image::new().rect([settings.position[0] + pos[0] as f64 * square_size,
+                                        (settings.position[1] + settings.size - square_size) - (pos[1] as f64 * square_size),
+                                        square_size, square_size]);
+            img.draw(settings.textures.get_piece_texture(piece), &c.draw_state, c.transform, g);
+        }
     }
 }

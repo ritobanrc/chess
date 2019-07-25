@@ -8,7 +8,6 @@ use piston::event_loop::*;
 use piston::input::*;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::*;
-use graphics::Transformed;
 use std::path::Path;
 
 mod chessboard;
@@ -31,7 +30,7 @@ fn main() {
     // Create an Glutin window.
     let mut window: Window = WindowSettings::new(
             "Chess",
-            [512, 512]
+            [810, 810]
         )
         .graphics_api(opengl)
         .exit_on_esc(true)
@@ -45,9 +44,6 @@ fn main() {
         ChessboardViewSettings::new()
     };
     let view = ChessboardView::new(view_settings);
-
-    let rust_logo = Texture::from_path(&Path::new("sprites/light_king.png"),
-&TextureSettings::new()).unwrap();
 
     // Create a new game and run it.
     let mut gl =  GlGraphics::new(opengl);
