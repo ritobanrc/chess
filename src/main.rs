@@ -42,7 +42,7 @@ fn main() {
         ChessboardViewSettings::new()
     };
     let view = ChessboardView::new(view_settings);
-    let mut controller = ChessboardController::new(chessboard, &view);
+    let mut controller = ChessboardController::new(&chessboard, &view);
 
     // Create a new game and run it.
     let mut gl =  GlGraphics::new(opengl);

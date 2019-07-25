@@ -2,7 +2,6 @@ use graphics;
 use graphics::types::Color;
 use opengl_graphics::{GlGraphics, Texture, TextureSettings};
 use std::path::Path;
-use std::collections::HashMap;
 use crate::ChessboardController;
 use crate::piece::{Piece, Side};
 use crate::chessboard_controller::Rectangle;
@@ -152,9 +151,10 @@ impl ChessboardView {
         Rectangle::new_border(settings.board_edge_color, settings.board_edge_size)
             .draw(board_rect, &c.draw_state, c.transform, g);
 
-        for (_, piece) in controller.chessboard.get_pieces() {
-            let img: Image = (&self.get_piece_rect(piece)).into();
-            img.draw(settings.textures.get_piece_texture(piece), &c.draw_state, c.transform, g);
+        //for (_, piece) in controller.chessboard.get_pieces() {
+        for piece_rect in &controller.piece_rects {
+            let img: Image = (&piece_rect.rect).into();
+            img.draw(settings.textures.get_piece_texture(piece_rect.piece), &c.draw_state, c.transform, g);
         }
     }
 }

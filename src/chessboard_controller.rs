@@ -1,27 +1,34 @@
 use graphics::Image;
 use piston::input::GenericEvent;
 use drag_controller::{Drag, DragController};
-use std::rc::Rc;
-use std::collections::HashMap;
 use crate::{Chessboard, ChessboardView};
 use crate::piece::Piece;
 
-pub struct ChessboardController {
-    pub chessboard: Chessboard,
-    drag_controller: DragController,
-    //piece_rects: HashMap<Rc<Piece>, Rectangle>
+pub struct PieceRect<'a> {
+    pub piece: &'a Piece, 
+    pub rect: Rectangle
 }
 
-impl ChessboardController {
-    pub fn new(chessboard: Chessboard, view: &ChessboardView) -> ChessboardController {
-        //let piece_rects = HashMap::new();
-        //for (_, piece) in chessboard.get_pieces() {
-            //piece_rects.insert(Rc::new(piece), view.get_piece_rect(&piece));
-        //}
+pub struct ChessboardController<'a> {
+    pub piece_rects: Vec<PieceRect<'a>>,
+    drag_controller: DragController,
+}
+
+impl<'a> ChessboardController<'a> {
+    pub fn new(chessboard: &'a Chessboard, view: &ChessboardView) -> ChessboardController<'a> {
+        let mut piece_rects = Vec::new();
+        for (_, piece) in chessboard.get_pieces() {
+            piece_rects.push(
+                PieceRect {
+                    piece: piece, 
+                    rect: view.get_piece_rect(piece)
+                }
+                );
+        }
+
         ChessboardController {
-            chessboard: chessboard,
             drag_controller: DragController::new(),
-            //piece_rects: piece_rects,
+            piece_rects: piece_rects
         }
     }
 
