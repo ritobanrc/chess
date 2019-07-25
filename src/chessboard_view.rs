@@ -2,8 +2,10 @@ use graphics;
 use graphics::types::Color;
 use opengl_graphics::{GlGraphics, Texture, TextureSettings};
 use std::path::Path;
+use std::collections::HashMap;
 use crate::ChessboardController;
 use crate::piece::{Piece, Side};
+use crate::chessboard_controller::Rectangle;
 use crate::{BOARD_SIZE};
 
 pub struct ChesspieceTextures {
@@ -120,9 +122,16 @@ impl ChessboardView {
         }
     }
 
+    pub fn get_piece_rect(&self, piece: &Piece) -> Rectangle {
+        let ref settings = self.settings;
+        let square_size: f64 = settings.size/(BOARD_SIZE as f64);
+        Rectangle::new(settings.position[0] + piece.get_data().position[0] as f64 * square_size,
+                       (settings.position[1] + settings.size - square_size) - (piece.get_data().position[1] as f64 * square_size),
+                       square_size, square_size)
+    }
+
     pub fn draw(&self, controller: &ChessboardController, c: &graphics::context::Context, g: &mut GlGraphics) {
         use graphics::{Rectangle, Image};
-
         let ref settings = self.settings;
 
         let square_size: f64 = settings.size/(BOARD_SIZE as f64);
@@ -143,11 +152,8 @@ impl ChessboardView {
         Rectangle::new_border(settings.board_edge_color, settings.board_edge_size)
             .draw(board_rect, &c.draw_state, c.transform, g);
 
-
-        for (pos, piece) in controller.chessboard.get_pieces() {
-            let img = Image::new().rect([settings.position[0] + pos[0] as f64 * square_size,
-                                        (settings.position[1] + settings.size - square_size) - (pos[1] as f64 * square_size),
-                                        square_size, square_size]);
+        for (_, piece) in controller.chessboard.get_pieces() {
+            let img: Image = (&self.get_piece_rect(piece)).into();
             img.draw(settings.textures.get_piece_texture(piece), &c.draw_state, c.transform, g);
         }
     }

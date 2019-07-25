@@ -1,6 +1,9 @@
-#[derive(PartialEq)]
+use std::hash::{Hash, Hasher};
+
+#[derive(PartialEq, Hash)]
 pub enum Side { Light, Dark }
 
+#[derive(PartialEq)]
 pub struct PieceData {
     pub position: [u8; 2], 
     pub side: Side,
@@ -15,6 +18,42 @@ impl PieceData {
     }
 }
 
+//impl PartialEq for PieceData {
+    //fn eq(&self, other: &Self) -> bool {
+        //self.position == other.position && self.side == other.side
+    //}
+//}
+
+impl Eq for Piece { }
+
+impl PartialEq for Piece {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_data() == other.get_data()
+    }
+}
+
+impl Hash for Piece {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.get_data().position.hash(state);
+        self.get_data().side.hash(state);
+    }
+}
+
+impl Piece {
+    pub fn get_data(&self) -> &PieceData {
+        match &self {
+            &Piece::Pawn(data) |
+                &Piece::Rook(data) |
+                &Piece::Knight(data) |
+                &Piece::Bishop(data) |
+                &Piece::Queen(data) |
+                &Piece::King(data) =>
+                &data
+        }
+    }
+}
+
+
 pub enum Piece {
     Pawn(PieceData), 
     Rook(PieceData), 
@@ -23,3 +62,4 @@ pub enum Piece {
     Queen(PieceData), 
     King(PieceData),
 }
+
