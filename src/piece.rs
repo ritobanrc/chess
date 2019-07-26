@@ -1,9 +1,9 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(PartialEq, Hash)]
+#[derive(PartialEq, Hash, Debug)]
 pub enum Side { Light, Dark }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct PieceData {
     pub position: [u8; 2], 
     pub side: Side,
@@ -53,7 +53,7 @@ impl Piece {
     }
 }
 
-
+#[derive(Debug)]
 pub enum Piece {
     Pawn(PieceData), 
     Rook(PieceData), 
