@@ -1,24 +1,24 @@
-use std::collections::HashMap;
 use crate::piece::{Piece, PieceData, Side};
-
+use std::collections::HashMap;
 
 pub struct Chessboard {
     pieces: HashMap<[u8; 2], Piece>,
 }
 
-
-fn create_piece(pieces: &mut HashMap<[u8; 2], Piece>,
-                pos: [u8; 2],
-                side: Side,
-                piece_type: &Fn(PieceData) -> Piece) { 
+fn create_piece(
+    pieces: &mut HashMap<[u8; 2], Piece>,
+    pos: [u8; 2],
+    side: Side,
+    piece_type: &Fn(PieceData) -> Piece,
+) {
     let data = PieceData::new(pos, side);
     pieces.insert(pos, piece_type(data));
 }
 
-fn str_to_pos (s: &'static str) -> [u8; 2]{
+fn str_to_pos(s: &'static str) -> [u8; 2] {
     let s = s.to_ascii_uppercase();
     let s = s.as_bytes();
-    [s[0] - 'A' as u8, s[1] - '1' as u8]
+    [s[0] - b'A' as u8, s[1] - b'1' as u8]
 }
 
 impl Chessboard {
@@ -28,7 +28,6 @@ impl Chessboard {
             pieces: HashMap::new(),
         }
     }
-
 
     /// Creates a new chessboard with the standard arrangement of pieces
     pub fn standard() -> Chessboard {
@@ -52,17 +51,13 @@ impl Chessboard {
         create_piece(&mut pieces, str_to_pos("g8"), Side::Dark, &Piece::Knight);
         create_piece(&mut pieces, str_to_pos("h8"), Side::Dark, &Piece::Rook);
 
-
-
         // Create pawns
         for file in 0..8u8 {
             create_piece(&mut pieces, [file, 1], Side::Light, &Piece::Pawn);
             create_piece(&mut pieces, [file, 6], Side::Dark, &Piece::Pawn);
         }
 
-        Chessboard {
-            pieces: pieces,
-        }
+        Chessboard { pieces }
     }
 
     pub fn get_piece_at(&self, pos: [u8; 2]) -> Option<&Piece> {
@@ -73,4 +68,3 @@ impl Chessboard {
         &self.pieces
     }
 }
-

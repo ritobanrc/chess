@@ -1,30 +1,30 @@
 use std::hash::{Hash, Hasher};
 
 #[derive(PartialEq, Hash, Debug)]
-pub enum Side { Light, Dark }
+pub enum Side {
+    Light,
+    Dark,
+}
 
 #[derive(PartialEq, Debug)]
 pub struct PieceData {
-    pub position: [u8; 2], 
+    pub position: [u8; 2],
     pub side: Side,
 }
 
 impl PieceData {
-    pub fn new (position: [u8; 2], side: Side) -> PieceData {
-        PieceData {
-            position: position, 
-            side: side,
-        }
+    pub fn new(position: [u8; 2], side: Side) -> PieceData {
+        PieceData { position, side }
     }
 }
 
 //impl PartialEq for PieceData {
-    //fn eq(&self, other: &Self) -> bool {
-        //self.position == other.position && self.side == other.side
-    //}
+//fn eq(&self, other: &Self) -> bool {
+//self.position == other.position && self.side == other.side
+//}
 //}
 
-impl Eq for Piece { }
+impl Eq for Piece {}
 
 impl PartialEq for Piece {
     fn eq(&self, other: &Self) -> bool {
@@ -42,24 +42,22 @@ impl Hash for Piece {
 impl Piece {
     pub fn get_data(&self) -> &PieceData {
         match &self {
-            &Piece::Pawn(data) |
-                &Piece::Rook(data) |
-                &Piece::Knight(data) |
-                &Piece::Bishop(data) |
-                &Piece::Queen(data) |
-                &Piece::King(data) =>
-                &data
+            Piece::Pawn(data)
+            | Piece::Rook(data)
+            | Piece::Knight(data)
+            | Piece::Bishop(data)
+            | Piece::Queen(data)
+            | Piece::King(data) => &data,
         }
     }
 }
 
 #[derive(Debug)]
 pub enum Piece {
-    Pawn(PieceData), 
-    Rook(PieceData), 
+    Pawn(PieceData),
+    Rook(PieceData),
     Knight(PieceData),
     Bishop(PieceData),
-    Queen(PieceData), 
+    Queen(PieceData),
     King(PieceData),
 }
-

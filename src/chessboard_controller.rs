@@ -1,12 +1,12 @@
+use crate::piece::Piece;
+use crate::{Chessboard, ChessboardView};
+use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
-use drag_controller::{Drag, DragController};
-use crate::{Chessboard, ChessboardView};
-use crate::piece::Piece;
 
 pub struct PieceRect<'a> {
-    pub piece: &'a Piece, 
-    pub rect: Rectangle
+    pub piece: &'a Piece,
+    pub rect: Rectangle,
 }
 
 pub struct ChessboardController<'a> {
@@ -18,25 +18,22 @@ pub struct ChessboardController<'a> {
 impl<'a> ChessboardController<'a> {
     pub fn new(chessboard: &'a Chessboard, view: &ChessboardView) -> ChessboardController<'a> {
         let mut piece_rects = Vec::new();
-        for (_, piece) in chessboard.get_pieces() {
-            piece_rects.push(
-                PieceRect {
-                    piece: piece, 
-                    rect: view.get_piece_rect(piece)
-                }
-                );
+        for piece in chessboard.get_pieces().values() {
+            piece_rects.push(PieceRect {
+                piece,
+                rect: view.get_piece_rect(piece),
+            });
         }
 
         ChessboardController {
+            piece_rects,
             drag_controller: DragController::new(),
-            piece_rects: piece_rects,
             selected: None,
         }
     }
 
-    
-
-    pub fn event <E: GenericEvent>(&mut self, e: &E) {
+    /// Handle events to the chessboard (piece dragging)
+    pub fn event<E: GenericEvent>(&mut self, e: &E) {
         let drag_controller = &mut self.drag_controller;
         let piece_rects = &mut self.piece_rects;
         let mut selected: Option<usize> = self.selected;
@@ -55,11 +52,11 @@ impl<'a> ChessboardController<'a> {
                         if piece_rect.rect.is_point_inside(x, y) {
                             println!("Dragging from piece {:?}", piece_rect.piece);
                             selected = Some(i);
-                            return true
+                            return true;
                         }
                     }
-                    return false
-                }, 
+                    return false;
+                }
                 Drag::End(_, _) => {
                     selected = None;
                     //println!("End {}{}", x, y);
@@ -74,17 +71,16 @@ impl<'a> ChessboardController<'a> {
     }
 }
 
-
 pub struct Rectangle {
-    x: f64, 
-    y: f64, 
-    w: f64, 
-    h: f64
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
 }
 
 impl Rectangle {
     pub fn new(x: f64, y: f64, w: f64, h: f64) -> Rectangle {
-        Rectangle { x: x, y: y, w: w, h: h }
+        Rectangle { x, y, w, h }
     }
 
     pub fn is_point_inside(&self, x: f64, y: f64) -> bool {
@@ -92,8 +88,8 @@ impl Rectangle {
     }
 
     pub fn update_center(&mut self, new_x: f64, new_y: f64) {
-        self.x = new_x - self.w/2.0;
-        self.y = new_y - self.w/2.0;
+        self.x = new_x - self.w / 2.0;
+        self.y = new_y - self.w / 2.0;
     }
 }
 
