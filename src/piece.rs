@@ -50,6 +50,17 @@ impl Piece {
             | Piece::King(data) => &data,
         }
     }
+
+    pub fn get_data_mut(&mut self) -> &mut PieceData {
+        match self {
+            Piece::Pawn(data)
+            | Piece::Rook(data)
+            | Piece::Knight(data)
+            | Piece::Bishop(data)
+            | Piece::Queen(data)
+            | Piece::King(data) => data,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -1,8 +1,25 @@
 use crate::piece::{Piece, PieceData, Side};
 use std::collections::HashMap;
 
+pub enum MoveResult<'a> {
+    Invalid,
+    Regular(&'a Piece), 
+    Capture {
+        moved: &'a Piece,
+        captured: &'a Piece,
+    },
+    Castle {
+        king: &'a Piece, 
+        rook: &'a Piece,
+    }, 
+    EnPassant {
+        moved: &'a Piece,
+        captured: &'a Piece,
+    }
+}
+
 pub struct Chessboard {
-    pieces: HashMap<[u8; 2], Piece>,
+    pub pieces: HashMap<[u8; 2], Piece>,
 }
 
 fn create_piece(
@@ -15,7 +32,7 @@ fn create_piece(
     pieces.insert(pos, piece_type(data));
 }
 
-fn str_to_pos(s: &'static str) -> [u8; 2] {
+fn str_to_pos(s: &str) -> [u8; 2] {
     let s = s.to_ascii_uppercase();
     let s = s.as_bytes();
     [s[0] - b'A' as u8, s[1] - b'1' as u8]
@@ -60,11 +77,22 @@ impl Chessboard {
         Chessboard { pieces }
     }
 
+    #[inline(always)]
     pub fn get_piece_at(&self, pos: [u8; 2]) -> Option<&Piece> {
         self.pieces.get(&pos)
     }
 
+    #[inline(always)]
     pub fn get_pieces(&self) -> &HashMap<[u8; 2], Piece> {
         &self.pieces
+    }
+
+    pub fn TryMove(&mut self, piece_ref: &Piece, pos: [u8; 2]) -> MoveResult {
+        //MoveResult::Invalid
+        // this is a really convoluted way of getting an owned type. 
+        let mut piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
+        piece.get_data_mut().position = pos;
+        self.pieces.insert(pos, piece);
+        MoveResult::Regular(self.get_piece_at(pos).unwrap())
     }
 }

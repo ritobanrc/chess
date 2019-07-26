@@ -1,4 +1,3 @@
-use crate::chessboard_controller::Rectangle;
 use crate::piece::{Piece, Side};
 use crate::ChessboardController;
 use crate::BOARD_SIZE;
@@ -115,10 +114,6 @@ impl ChesspieceTextures {
 }
 
 pub struct ChessboardViewSettings {
-    /// Position from left-top corner.
-    pub position: [f64; 2],
-    /// Size of gameboard along horizontal and vertical edge.
-    pub size: f64,
     /// Color of the light squares
     pub light_square_color: Color,
     /// Color of the dark squares
@@ -148,12 +143,10 @@ impl ChessboardViewSettings {
             "sprites/dark_pawn.png",
         );
         ChessboardViewSettings {
-            position: [5.0; 2],
-            size: 800.0,
             light_square_color: [0.961, 0.961, 0.863, 1.0],
             dark_square_color: [0.545, 0.271, 0.075, 1.0],
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
-            board_edge_size: 6.0,
+            board_edge_size: 5.0,
             textures,
         }
     }
@@ -164,19 +157,9 @@ pub struct ChessboardView {
 }
 
 impl ChessboardView {
+    #[inline(always)]
     pub fn new(settings: ChessboardViewSettings) -> ChessboardView {
         ChessboardView { settings: settings }
-    }
-
-    pub fn get_piece_rect(&self, piece: &Piece) -> Rectangle {
-        let square_size: f64 = self.settings.size / (BOARD_SIZE as f64);
-        Rectangle::new(
-            self.settings.position[0] + f64::from(piece.get_data().position[0]) * square_size,
-            (self.settings.position[1] + self.settings.size - square_size)
-                - (f64::from(piece.get_data().position[1]) * square_size),
-            square_size,
-            square_size,
-        )
     }
 
     pub fn draw(
@@ -188,13 +171,13 @@ impl ChessboardView {
         use graphics::{Image, Rectangle};
         let settings = &self.settings;
 
-        let square_size: f64 = settings.size / (BOARD_SIZE as f64);
+        let square_size: f64 = controller.size / (BOARD_SIZE as f64);
 
         for x in 0..BOARD_SIZE {
             for y in 0..BOARD_SIZE {
                 let square_rect = [
-                    settings.position[0] + (x as f64) * square_size,
-                    settings.position[1] + (y as f64) * square_size,
+                    controller.position[0] + (x as f64) * square_size,
+                    controller.position[1] + (y as f64) * square_size,
                     square_size,
                     square_size,
                 ];
@@ -208,10 +191,10 @@ impl ChessboardView {
         }
 
         let board_rect = [
-            settings.position[0],
-            settings.position[1],
-            settings.size,
-            settings.size,
+            controller.position[0],
+            controller.position[1],
+            controller.size,
+            controller.size,
         ];
 
         Rectangle::new_border(settings.board_edge_color, settings.board_edge_size).draw(

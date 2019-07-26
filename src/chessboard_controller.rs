@@ -1,5 +1,6 @@
 use crate::piece::Piece;
-use crate::{Chessboard, ChessboardView};
+use crate::chessboard::{MoveResult, Chessboard};
+use crate::BOARD_SIZE;
 use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
@@ -10,64 +11,118 @@ pub struct PieceRect<'a> {
 }
 
 pub struct ChessboardController<'a> {
+    /// Position from left-top corner.
+    pub position: [f64; 2],
+    /// Size of gameboard along horizontal and vertical edge.
+    pub size: f64,
     pub piece_rects: Vec<PieceRect<'a>>,
     drag_controller: DragController,
     selected: Option<usize>, // This is a terrible hack, but there isn't any other way to have a reference into piece_rects
+    chessboard: &'a Chessboard
 }
 
 impl<'a> ChessboardController<'a> {
-    pub fn new(chessboard: &'a Chessboard, view: &ChessboardView) -> ChessboardController<'a> {
-        let mut piece_rects = Vec::new();
-        for piece in chessboard.get_pieces().values() {
-            piece_rects.push(PieceRect {
-                piece,
-                rect: view.get_piece_rect(piece),
-            });
-        }
+    pub fn new(chessboard: &'a Chessboard) -> ChessboardController<'a> {
+        let piece_rects = Vec::new();
 
-        ChessboardController {
+        let mut controller = ChessboardController {
+            position: [5.0; 2],
+            size: 800.0,
             piece_rects,
             drag_controller: DragController::new(),
             selected: None,
+            chessboard
+        };
+        for piece in chessboard.get_pieces().values() {
+            controller.piece_rects.push(PieceRect {
+                piece,
+                rect: controller.get_piece_rect(piece),
+            });
         }
+        controller
     }
+
+
+    #[inline(always)]
+    pub fn get_piece_rect(&self, piece: &Piece) -> Rectangle {
+        self.get_square_rect(piece.get_data().position)
+    }
+
+    pub fn get_square_rect(&self, pos: [u8; 2]) -> Rectangle {
+        let square_size = self.square_size();
+        Rectangle::new(
+            self.position[0] + f64::from(pos[0]) * square_size,
+            (self.position[1] + self.size - square_size)
+                - (f64::from(pos[1]) * square_size),
+            square_size,
+            square_size,
+        )
+    }
+
+    #[inline(always)]
+    pub fn square_size(&self) -> f64 {
+        self.size / (BOARD_SIZE as f64)
+    }
+
 
     /// Handle events to the chessboard (piece dragging)
     pub fn event<E: GenericEvent>(&mut self, e: &E) {
         let drag_controller = &mut self.drag_controller;
-        let piece_rects = &mut self.piece_rects;
+        let piece_rects = &self.piece_rects;
         let mut selected: Option<usize> = self.selected;
+
+        let mut local_drag: Option<Drag> = None;
+
         drag_controller.event(e, |drag| {
-            match drag {
-                Drag::Interrupt => println!("Interrupt"),
-                Drag::Move(x, y) => {
-                    //println!("Move {}{}", x, y);
-                    if let Some(idx) = selected {
-                        piece_rects[idx].rect.update_center(x, y);
-                    }
-                }
-                Drag::Start(x, y) => {
+            // start is the only case we need to handle in the closure. 
+            if let Drag::Start(x, y) = drag {
                     //println!("Start {}{}", x, y);
                     for (i, piece_rect) in piece_rects.iter().enumerate() {
                         if piece_rect.rect.is_point_inside(x, y) {
-                            println!("Dragging from piece {:?}", piece_rect.piece);
                             selected = Some(i);
                             return true;
                         }
                     }
                     return false;
-                }
-                Drag::End(_, _) => {
-                    selected = None;
-                    //println!("End {}{}", x, y);
-                }
+            } else {
+                // for the rest, cache the result in the local, and handle it outside
+                local_drag = Some(drag)
             }
             true
         });
 
-        if let Some(idx) = selected {
-            self.selected = Some(idx);
+        if let Some(drag) = local_drag {
+            match drag {
+                Drag::Interrupt | Drag::Start(_, _) => { } // do nothing. start already handled
+                Drag::Move(x, y) => {
+                    //println!("Move {}{}", x, y);
+                    if let Some(idx) = selected  {
+                        self.piece_rects[idx].rect.update_center(x, y);
+                    }
+                }
+                Drag::End(x, y) => {
+                    // this feels about right.
+                    if let Some(idx) = selected {
+                        let pos: [u8; 2] = [((x - self.position[0])/self.square_size()).floor() as u8,
+                        BOARD_SIZE as u8 - ((y - self.position[0])/self.square_size()).ceil() as u8];
+
+                        // TODO: get the chessboard, tell it to try the move. if it is valid, adjust
+                        // the piece rect. otherwise, reset the piece rect.
+                        let move_result = self.chessboard.TryMove(self.piece_rects[idx].piece, pos);
+
+                        // no matter what, go to wherever the chessboard put the piece.
+                        self.piece_rects[idx].rect = self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                        //if let MoveResult::Invalid = move_result {
+                            //// if the move is invalid, return the piece to where it was before.
+                        //} else {
+                            ////self.piece_rects[idx].rect = self.get_square_rect(pos);
+                        //}
+                        selected = None; // drag over, no longer selected
+                    }
+                }
+            };
         }
+        self.selected = selected;
     }
 }
 
@@ -95,6 +150,7 @@ impl Rectangle {
 
 // TODO: I don't know if this makes any sort of sense
 impl Into<Image> for &Rectangle {
+    #[inline(always)]
     fn into(self) -> Image {
         Image::new().rect([self.x, self.y, self.w, self.h])
     }
