@@ -6,7 +6,7 @@ pub enum MoveResult<'a> {
     Regular(&'a Piece), 
     Capture {
         moved: &'a Piece,
-        captured: &'a Piece,
+        captured: Piece, // capturing a piece gives up ownership
     },
     Castle {
         king: &'a Piece, 
@@ -87,11 +87,27 @@ impl Chessboard {
         &self.pieces
     }
 
-    pub fn try_move(&mut self, piece_ref: &Piece, pos: [u8; 2]) -> MoveResult {
-        // get the copy in the hashset. 
+    pub fn try_move(&mut self, piece_ref: &Piece, end_pos: [u8; 2]) -> MoveResult {
+        // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
         let mut piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
-        piece.get_data_mut().position = pos;
-        self.pieces.insert(pos, piece);
-        MoveResult::Regular(self.get_piece_at(pos).unwrap())
+        if let Some(other_piece) = self.pieces.get(&end_pos) {
+            if other_piece.get_data().side == piece.get_data().side {
+                self.pieces.insert(piece.get_data().position, piece);
+                MoveResult::Invalid
+            }
+            else {
+                piece.get_data_mut().position = end_pos;
+                let captured = self.pieces.insert(end_pos, piece); // captured piece will automatically be removed.
+                MoveResult::Capture {
+                    moved: self.get_piece_at(end_pos).unwrap(),
+                    captured: captured.unwrap()
+                }
+            }
+        }
+        else {
+            piece.get_data_mut().position = end_pos;
+            self.pieces.insert(end_pos, piece);
+            MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
+        }
     }
 }

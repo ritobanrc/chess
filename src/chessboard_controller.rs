@@ -4,6 +4,7 @@ use crate::BOARD_SIZE;
 use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
+use std::iter;
 
 pub struct PieceRect {
     pub piece: Piece,
@@ -109,24 +110,32 @@ impl ChessboardController {
                         let pos: [u8; 2] = [((x - self.position[0])/self.square_size()).floor() as u8,
                         BOARD_SIZE as u8 - ((y - self.position[0])/self.square_size()).ceil() as u8];
 
-                        // TODO: get the chessboard, tell it to try the move. if it is valid, adjust
-                        // the piece rect. otherwise, reset the piece rect.
+                        // get the chessboard, tell it to try the move. 
                         let move_result = self.chessboard.try_move(&self.piece_rects[idx].piece, pos);
 
                         // In the event that some idiot (cough..me..cough) made it so the
                         // chessboard pieces aren't directly linked to the piece rect pieces, 
                         // set the piece_rect pieces to be the chessboard pieces
                         match move_result {
-                            MoveResult::Regular(p) => self.piece_rects[idx].piece = p.clone(),
+                            MoveResult::Invalid => {
+                                // it it's invalid, set the position equal to wherever it is.
+                                self.piece_rects[idx].rect = self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                            },
+                            MoveResult::Regular(p) => {
+                                // it it's a regular position, update both the rect and the piece
+                                self.piece_rects[idx].piece = p.clone();
+                                self.piece_rects[idx].rect = self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                            },
+                            MoveResult::Capture{moved, captured} => {
+                                // start by updating the moved piece
+                                self.piece_rects[idx].piece = moved.clone();
+                                self.piece_rects[idx].rect = self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                                // now remove the captured piece
+                                let pos = self.piece_rects.iter().position(|x| x.piece == captured).unwrap();
+                                self.piece_rects.remove(pos);
+                            }
                             _ => { }
                         };
-                        // no matter what, go to wherever the chessboard put the piece.
-                        self.piece_rects[idx].rect = self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
-                        //if let MoveResult::Invalid = move_result {
-                            //// if the move is invalid, return the piece to where it was before.
-                        //} else {
-                            ////self.piece_rects[idx].rect = self.get_square_rect(pos);
-                        //}
                         selected = None; // drag over, no longer selected
                     }
                 }
