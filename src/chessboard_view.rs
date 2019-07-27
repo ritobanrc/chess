@@ -208,7 +208,7 @@ impl ChessboardView {
         for piece_rect in &controller.piece_rects {
             let img: Image = (&piece_rect.rect).into();
             img.draw(
-                settings.textures.get_piece_texture(piece_rect.piece),
+                settings.textures.get_piece_texture(&piece_rect.piece),
                 &c.draw_state,
                 c.transform,
                 g,

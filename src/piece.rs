@@ -1,12 +1,12 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(PartialEq, Hash, Debug)]
+#[derive(PartialEq, Hash, Debug, Clone)]
 pub enum Side {
     Light,
     Dark,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct PieceData {
     pub position: [u8; 2],
     pub side: Side,
@@ -39,6 +39,7 @@ impl Hash for Piece {
     }
 }
 
+
 impl Piece {
     pub fn get_data(&self) -> &PieceData {
         match &self {
@@ -63,7 +64,8 @@ impl Piece {
     }
 }
 
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
 pub enum Piece {
     Pawn(PieceData),
     Rook(PieceData),

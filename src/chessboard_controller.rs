@@ -5,27 +5,26 @@ use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
 
-pub struct PieceRect<'a> {
-    pub piece: &'a Piece,
+pub struct PieceRect {
+    pub piece: Piece,
     pub rect: Rectangle,
 }
 
-pub struct ChessboardController<'a> {
+pub struct ChessboardController {
     /// Position from left-top corner.
     pub position: [f64; 2],
     /// Size of gameboard along horizontal and vertical edge.
     pub size: f64,
-    pub piece_rects: Vec<PieceRect<'a>>,
+    pub piece_rects: Vec<PieceRect>,
     drag_controller: DragController,
     selected: Option<usize>, // This is a terrible hack, but there isn't any other way to have a reference into piece_rects
-    chessboard: &'a Chessboard
+    chessboard: Chessboard
 }
 
-impl<'a> ChessboardController<'a> {
-    pub fn new(chessboard: &'a Chessboard) -> ChessboardController<'a> {
+impl ChessboardController {
+    pub fn new(chessboard: Chessboard) -> ChessboardController {
         let piece_rects = Vec::new();
-
-        let mut controller = ChessboardController {
+        let controller = ChessboardController {
             position: [5.0; 2],
             size: 800.0,
             piece_rects,
@@ -33,13 +32,17 @@ impl<'a> ChessboardController<'a> {
             selected: None,
             chessboard
         };
-        for piece in chessboard.get_pieces().values() {
-            controller.piece_rects.push(PieceRect {
-                piece,
-                rect: controller.get_piece_rect(piece),
+        controller
+    }
+
+    pub fn init_piece_rects(&mut self) {
+        for piece in self.chessboard.get_pieces().values() {
+            self.piece_rects.push(PieceRect {
+                piece: piece.clone(),
+                rect: self.get_piece_rect(piece),
+                //rect: Rectangle::new(1.0, 1.0, 1.0, 1.0)
             });
         }
-        controller
     }
 
 
@@ -108,8 +111,15 @@ impl<'a> ChessboardController<'a> {
 
                         // TODO: get the chessboard, tell it to try the move. if it is valid, adjust
                         // the piece rect. otherwise, reset the piece rect.
-                        let move_result = self.chessboard.TryMove(self.piece_rects[idx].piece, pos);
+                        let move_result = self.chessboard.try_move(&self.piece_rects[idx].piece, pos);
 
+                        // In the event that some idiot (cough..me..cough) made it so the
+                        // chessboard pieces aren't directly linked to the piece rect pieces, 
+                        // set the piece_rect pieces to be the chessboard pieces
+                        match move_result {
+                            MoveResult::Regular(p) => self.piece_rects[idx].piece = p.clone(),
+                            _ => { }
+                        };
                         // no matter what, go to wherever the chessboard put the piece.
                         self.piece_rects[idx].rect = self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
                         //if let MoveResult::Invalid = move_result {

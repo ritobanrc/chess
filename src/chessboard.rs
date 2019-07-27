@@ -87,9 +87,8 @@ impl Chessboard {
         &self.pieces
     }
 
-    pub fn TryMove(&mut self, piece_ref: &Piece, pos: [u8; 2]) -> MoveResult {
-        //MoveResult::Invalid
-        // this is a really convoluted way of getting an owned type. 
+    pub fn try_move(&mut self, piece_ref: &Piece, pos: [u8; 2]) -> MoveResult {
+        // get the copy in the hashset. 
         let mut piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
         piece.get_data_mut().position = pos;
         self.pieces.insert(pos, piece);
