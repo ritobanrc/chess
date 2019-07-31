@@ -18,7 +18,7 @@ use crate::chessboard::Chessboard;
 use crate::chessboard_controller::ChessboardController;
 use crate::chessboard_view::{ChessboardView, ChessboardViewSettings};
 
-pub const BOARD_SIZE: usize = 8;
+pub const BOARD_SIZE: u8 = 8;
 
 fn main() {
     // Change this to OpenGL::V2_1 if not working.

@@ -108,7 +108,7 @@ impl ChessboardController {
                     // this feels about right.
                     if let Some(idx) = selected {
                         let pos: [u8; 2] = [((x - self.position[0])/self.square_size()).floor() as u8,
-                        BOARD_SIZE as u8 - ((y - self.position[0])/self.square_size()).ceil() as u8];
+                                            BOARD_SIZE - ((y - self.position[0])/self.square_size()).ceil() as u8];
 
                         // get the chessboard, tell it to try the move. 
                         let move_result = self.chessboard.try_move(&self.piece_rects[idx].piece, pos);

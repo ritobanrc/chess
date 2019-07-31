@@ -1,4 +1,5 @@
 use crate::piece::{Piece, PieceData, Side};
+use crate::BOARD_SIZE;
 use std::collections::HashMap;
 
 pub enum MoveResult<'a> {
@@ -77,6 +78,13 @@ impl Chessboard {
         Chessboard { pieces }
     }
 
+    pub fn on_board(pos: [i8; 2]) -> Option<[u8; 2]> {
+        if pos[0] >= 0 && pos[1] >= 0 && pos[0] < BOARD_SIZE as i8 && pos[1] < BOARD_SIZE as i8 {
+            return Some([pos[0] as u8, pos[1] as u8])
+        }
+        None
+    }
+
     #[inline(always)]
     pub fn get_piece_at(&self, pos: [u8; 2]) -> Option<&Piece> {
         self.pieces.get(&pos)
@@ -87,27 +95,16 @@ impl Chessboard {
         &self.pieces
     }
 
+    /// A wrapper on HashMap::insert, which just inserts the piece into the hashmap without any
+    /// checks, and returns the piece it might have replaced.
+    pub fn apply_move(&mut self, pos: [u8; 2], piece: Piece) -> Option<Piece> {
+        self.pieces.insert(pos, piece)
+    }
+
     pub fn try_move(&mut self, piece_ref: &Piece, end_pos: [u8; 2]) -> MoveResult {
         // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
-        let mut piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
-        if let Some(other_piece) = self.pieces.get(&end_pos) {
-            if other_piece.get_data().side == piece.get_data().side {
-                self.pieces.insert(piece.get_data().position, piece);
-                MoveResult::Invalid
-            }
-            else {
-                piece.get_data_mut().position = end_pos;
-                let captured = self.pieces.insert(end_pos, piece); // captured piece will automatically be removed.
-                MoveResult::Capture {
-                    moved: self.get_piece_at(end_pos).unwrap(),
-                    captured: captured.unwrap()
-                }
-            }
-        }
-        else {
-            piece.get_data_mut().position = end_pos;
-            self.pieces.insert(end_pos, piece);
-            MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
-        }
+        let piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
+
+        piece.try_move(self, end_pos)
     }
 }
