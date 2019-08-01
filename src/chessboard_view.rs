@@ -171,13 +171,13 @@ impl ChessboardView {
         use graphics::{Image, Rectangle};
         let settings = &self.settings;
 
-        let square_size: f64 = controller.size / (BOARD_SIZE as f64);
+        let square_size: f64 = controller.size / f64::from(BOARD_SIZE);
 
         for x in 0..BOARD_SIZE {
             for y in 0..BOARD_SIZE {
                 let square_rect = [
-                    controller.position[0] + (x as f64) * square_size,
-                    controller.position[1] + (y as f64) * square_size,
+                    controller.position[0] + f64::from(x) * square_size,
+                    controller.position[1] + f64::from(y) * square_size,
                     square_size,
                     square_size,
                 ];

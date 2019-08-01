@@ -2,28 +2,29 @@ use crate::piece::{Piece, PieceData, Side};
 use crate::BOARD_SIZE;
 use std::collections::HashMap;
 
+#[derive(PartialEq, Debug)]
 pub enum MoveResult<'a> {
     Invalid,
-    Regular(&'a Piece), 
+    Regular(&'a Piece),
     Capture {
         moved: &'a Piece,
         captured: Piece, // capturing a piece gives up ownership
     },
     Castle {
-        king: &'a Piece, 
+        king: &'a Piece,
         rook: &'a Piece,
-    }, 
+    },
     EnPassant {
         moved: &'a Piece,
         captured: &'a Piece,
-    }
+    },
 }
 
 pub struct Chessboard {
     pub pieces: HashMap<[u8; 2], Piece>,
 }
 
-fn create_piece(
+pub fn create_piece(
     pieces: &mut HashMap<[u8; 2], Piece>,
     pos: [u8; 2],
     side: Side,
@@ -36,7 +37,7 @@ fn create_piece(
 fn str_to_pos(s: &str) -> [u8; 2] {
     let s = s.to_ascii_uppercase();
     let s = s.as_bytes();
-    [s[0] - b'A' as u8, s[1] - b'1' as u8]
+    [s[0] - b'A', s[1] - b'1']
 }
 
 impl Chessboard {
@@ -80,7 +81,7 @@ impl Chessboard {
 
     pub fn on_board(pos: [i8; 2]) -> Option<[u8; 2]> {
         if pos[0] >= 0 && pos[1] >= 0 && pos[0] < BOARD_SIZE as i8 && pos[1] < BOARD_SIZE as i8 {
-            return Some([pos[0] as u8, pos[1] as u8])
+            return Some([pos[0] as u8, pos[1] as u8]);
         }
         None
     }
@@ -107,4 +108,35 @@ impl Chessboard {
 
         piece.try_move(self, end_pos)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_chessboard() {
+        let chessboard = Chessboard::empty();
+        assert_eq!(chessboard.get_piece_at([0, 0]), None);
+    }
+
+    #[test]
+    fn test_piece_creation() {
+        let mut chessboard = Chessboard::empty();
+        create_piece(
+            &mut chessboard.pieces,
+            str_to_pos("e5"),
+            Side::Light,
+            &Piece::Rook,
+        );
+        assert_eq!(
+            chessboard.get_piece_at([4, 4]).unwrap(),
+            &Piece::Rook(PieceData {
+                position: [4, 4],
+                side: Side::Light
+            })
+        );
+        assert_eq!(chessboard.get_piece_at([5, 5]), None);
+    }
+
 }
