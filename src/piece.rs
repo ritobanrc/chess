@@ -57,6 +57,7 @@ enum MoveType {
     Regular,
     Capture,
     Doublestep,
+    EnPassant,
 }
 
 impl Piece {
@@ -89,7 +90,7 @@ impl Piece {
         (
             (end[0] as i8) - (start[0] as i8),
             (end[1] as i8) - (start[1] as i8),
-        );
+        )
     }
 
     fn step_through_positions(
@@ -192,16 +193,24 @@ impl Piece {
                 {
                     // doublestep at beginning
                     MoveType::Doublestep
-                } else if dx.abs() == 1 && dy.abs() == 1 && {
+                } else if dx.abs() == 1 && dy == pawn_settings::get_direction(data.side) {
+                    // capturing diagonally
                     let capture = chessboard.get_piece_at(end_pos);
                     if let Some(capture) = capture {
-                        capture.get_data().side != data.side
+                        if capture.get_data().side != data.side {
+                            MoveType::Capture
+                        } else {
+                            MoveType::Invalid
+                        }
                     } else {
-                        false
+                        if let Some(en_passant) = chessboard.en_passant {
+                            if en_passant[0] == end_pos[0] 
+                                && (en_passant[1] as i8 + pawn_settings::get_direction(data.side)) as u8 == end_pos[1] {
+                                return MoveType::EnPassant
+                            }
+                        }
+                        MoveType::Invalid
                     }
-                } {
-                    // capturing diagonally
-                    MoveType::Capture
                 } else {
                     MoveType::Invalid
                 }
@@ -243,6 +252,17 @@ impl Piece {
                 chessboard.en_passant = Some(self.get_data().position);
                 chessboard.apply_move(end_pos, self);
                 MoveResult::Regular(chessboard.get_piece_at(end_pos).unwrap())
+            },
+
+            MoveType::EnPassant => { 
+                self.get_data_mut().position = end_pos;
+                chessboard.apply_move(end_pos, self); // this should not return anything
+                let captured = chessboard.pieces.remove(&chessboard.en_passant.unwrap()).unwrap();
+                chessboard.en_passant = None;
+                MoveResult::EnPassant {
+                    moved: chessboard.get_piece_at(end_pos).unwrap(),
+                    captured,
+                }
             }
         }
     }
@@ -346,7 +366,7 @@ mod tests {
         create_piece(&mut chessboard.pieces, [6, 6], Side::Dark, &Piece::Knight);
         let piece = chessboard.get_piece_at([4, 4]).unwrap().clone();
         let move_result = chessboard.try_move(&piece, [6, 6]);
-        if let MoveResult::Capture { moved, captured } = move_result {
+        if let MoveResult::Capture { moved: _, captured } = move_result {
             match captured {
                 Piece::Knight(data) => assert_eq!(data.position, [6, 6]),
                 _ => panic!("test_bishop_captures failed."),
@@ -507,7 +527,7 @@ mod tests {
         create_piece(&mut chessboard.pieces, [4, 6], Side::Dark, &Piece::Knight);
         let piece = chessboard.get_piece_at([4, 4]).unwrap().clone();
         let move_result = chessboard.try_move(&piece, [4, 6]);
-        if let MoveResult::Capture { moved, captured } = move_result {
+        if let MoveResult::Capture { moved: _, captured } = move_result {
             match captured {
                 Piece::Knight(data) => assert_eq!(data.position, [4, 6]),
                 _ => panic!("test_rook_captures failed."),
@@ -745,6 +765,81 @@ mod tests {
                     end_pos
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_pawn_move_simple_light() {
+        use crate::chessboard::create_piece;
+        let mut chessboard = Chessboard::empty();
+        create_piece(&mut chessboard.pieces, [4, 4], Side::Light, &Piece::Pawn);
+        let piece = chessboard.get_piece_at([4, 4]).unwrap().clone();
+        chessboard.try_move(&piece, [4, 5]);
+        assert_eq!(
+            chessboard.get_piece_at([4, 5]).unwrap().get_data().position,
+            [4, 5]
+        );
+    }
+
+    #[test]
+    fn test_pawn_move_simple_dark() {
+        use crate::chessboard::create_piece;
+        let mut chessboard = Chessboard::empty();
+        create_piece(&mut chessboard.pieces, [4, 4], Side::Dark, &Piece::Pawn);
+        let piece = chessboard.get_piece_at([4, 4]).unwrap().clone();
+        chessboard.try_move(&piece, [4, 3]);
+        assert_eq!(
+            chessboard.get_piece_at([4, 3]).unwrap().get_data().position,
+            [4, 3]
+        );
+    }
+
+    #[test]
+    fn test_pawn_doublestep_light() {
+        use crate::chessboard::create_piece;
+        let mut chessboard = Chessboard::empty();
+        create_piece(&mut chessboard.pieces, [4, 1], Side::Light, &Piece::Pawn);
+        let piece = chessboard.get_piece_at([4, 1]).unwrap().clone();
+        chessboard.try_move(&piece, [4, 3]);
+        assert_eq!(
+            chessboard.get_piece_at([4, 3]).unwrap().get_data().position,
+            [4, 3]
+        );
+    }
+
+    #[test]
+    fn test_pawn_doublestep_dark() {
+        use crate::chessboard::create_piece;
+        let mut chessboard = Chessboard::empty();
+        create_piece(&mut chessboard.pieces, [4, 6], Side::Dark, &Piece::Pawn);
+        let piece = chessboard.get_piece_at([4, 6]).unwrap().clone();
+        chessboard.try_move(&piece, [4, 4]);
+        assert_eq!(
+            chessboard.get_piece_at([4, 4]).unwrap().get_data().position,
+            [4, 4]
+        );
+    }
+
+    #[test]
+    fn test_pawn_captures() {
+        use crate::chessboard::create_piece;
+        let mut chessboard = Chessboard::empty();
+        create_piece(&mut chessboard.pieces, [4, 4], Side::Light, &Piece::Pawn);
+        create_piece(&mut chessboard.pieces, [5, 5], Side::Dark, &Piece::Knight);
+        create_piece(&mut chessboard.pieces, [4, 6], Side::Dark, &Piece::Knight);
+        let piece = chessboard.get_piece_at([4, 4]).unwrap().clone();
+        let move_result = chessboard.try_move(&piece, [5, 5]);
+        if let MoveResult::Capture { moved: _, captured } = move_result {
+            match captured {
+                Piece::Knight(data) => assert_eq!(data.position, [5, 5]),
+                _ => panic!("test_rook_captures failed."),
+            }
+            assert_eq!(
+                chessboard.get_piece_at([5, 5]).unwrap().get_data().side,
+                Side::Light
+            );
+        } else {
+            panic!("test_rook_captures failed.")
         }
     }
 

@@ -16,7 +16,7 @@ pub enum MoveResult<'a> {
     },
     EnPassant {
         moved: &'a Piece,
-        captured: &'a Piece,
+        captured: Piece,
     },
 }
 

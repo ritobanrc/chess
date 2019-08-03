@@ -128,7 +128,8 @@ impl ChessboardController {
                                     self.piece_rects[idx].piece.get_data().position,
                                 );
                             }
-                            MoveResult::Capture { moved, captured } => {
+                            MoveResult::Capture { moved, captured } 
+                            | MoveResult::EnPassant { moved, captured } => {
                                 // start by updating the moved piece
                                 self.piece_rects[idx].piece = moved.clone();
                                 self.piece_rects[idx].rect = self.get_square_rect(
@@ -141,7 +142,7 @@ impl ChessboardController {
                                     .position(|x| x.piece == captured)
                                     .unwrap();
                                 self.piece_rects.remove(pos);
-                            }
+                            },
                             _ => {}
                         };
                         selected = None; // drag over, no longer selected
