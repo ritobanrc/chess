@@ -22,6 +22,7 @@ pub enum MoveResult<'a> {
 
 pub struct Chessboard {
     pub pieces: HashMap<[u8; 2], Piece>,
+    pub en_passant: Option<[u8; 2]>,
 }
 
 pub fn create_piece(
@@ -45,6 +46,7 @@ impl Chessboard {
     pub fn empty() -> Chessboard {
         Chessboard {
             pieces: HashMap::new(),
+            en_passant: None,
         }
     }
 
@@ -76,7 +78,10 @@ impl Chessboard {
             create_piece(&mut pieces, [file, 6], Side::Dark, &Piece::Pawn);
         }
 
-        Chessboard { pieces }
+        Chessboard {
+            pieces,
+            en_passant: None,
+        }
     }
 
     pub fn on_board(pos: [i8; 2]) -> Option<[u8; 2]> {

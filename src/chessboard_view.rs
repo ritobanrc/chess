@@ -146,7 +146,7 @@ impl ChessboardViewSettings {
             light_square_color: [0.961, 0.961, 0.863, 1.0],
             dark_square_color: [0.545, 0.271, 0.075, 1.0],
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
-            board_edge_size: 5.0,
+            board_edge_size: 4.0,
             textures,
         }
     }
@@ -159,7 +159,7 @@ pub struct ChessboardView {
 impl ChessboardView {
     #[inline(always)]
     pub fn new(settings: ChessboardViewSettings) -> ChessboardView {
-        ChessboardView { settings: settings }
+        ChessboardView { settings }
     }
 
     pub fn draw(

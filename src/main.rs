@@ -25,7 +25,7 @@ fn main() {
     let opengl = OpenGL::V3_2;
 
     // Create an Glutin window.
-    let mut window: Window = WindowSettings::new("Chess", [1024, 810])
+    let mut window: Window = WindowSettings::new("Chess", [512, 405])
         .graphics_api(opengl)
         .exit_on_esc(true)
         .resizable(false)

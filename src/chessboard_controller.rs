@@ -24,15 +24,14 @@ pub struct ChessboardController {
 impl ChessboardController {
     pub fn new(chessboard: Chessboard) -> ChessboardController {
         let piece_rects = Vec::new();
-        let controller = ChessboardController {
-            position: [5.0; 2],
-            size: 800.0,
+        ChessboardController {
+            position: [4.0; 2],
+            size: 400.0,
             piece_rects,
             drag_controller: DragController::new(),
             selected: None,
             chessboard,
-        };
-        controller
+        }
     }
 
     pub fn init_piece_rects(&mut self) {
