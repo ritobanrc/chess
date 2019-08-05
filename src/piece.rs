@@ -51,8 +51,8 @@ impl PartialEq for Piece {
     }
 }
 
-#[derive(PartialEq)]
-enum MoveType {
+#[derive(PartialEq, Clone, Copy)]
+pub enum MoveType {
     Invalid,
     Regular,
     Capture,
@@ -86,7 +86,7 @@ impl Piece {
     }
 
     #[inline(always)]
-    fn get_dx_dy(start: [u8; 2], end: [u8; 2]) -> (i8, i8) {
+    pub fn get_dx_dy(start: [u8; 2], end: [u8; 2]) -> (i8, i8) {
         (
             (end[0] as i8) - (start[0] as i8),
             (end[1] as i8) - (start[1] as i8),
@@ -121,7 +121,6 @@ impl Piece {
                     return MoveType::Invalid;
                 }
             }
-
             // if we got here, the move is valid
             if cur == end_pos {
                 return MoveType::Regular;
@@ -132,8 +131,8 @@ impl Piece {
         panic!("Piece::step_through_positions -- Iterating over positions failed to arrive at end_pos.")
     }
 
-    fn can_move(&self, chessboard: &Chessboard, end_pos: [u8; 2]) -> MoveType {
-        match self {
+    pub fn can_move(&self, chessboard: &Chessboard, end_pos: [u8; 2], check_check: bool) -> MoveType {
+        let original_move_type = match self {
             Piece::Bishop(data) => {
                 let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
                 if dx.abs() != dy.abs() {
@@ -157,25 +156,23 @@ impl Piece {
                 self.step_through_positions(chessboard, end_pos, dx, dy)
             }
             Piece::Knight(data) => {
-                if let Some(other_piece) = chessboard.get_piece_at(end_pos) {
-                    if other_piece.get_data().side == data.side {
-                        return MoveType::Invalid;
-                    } else {
-                        return MoveType::Capture;
-                    }
-                }
-
                 let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
-
                 if (dx.abs() == 1 && dy.abs() == 2) || (dx.abs() == 2 && dy.abs() == 1) {
-                    MoveType::Regular
+                    if let Some(other_piece) = chessboard.get_piece_at(end_pos) {
+                        if other_piece.get_data().side == data.side {
+                            MoveType::Invalid
+                        } else {
+                            MoveType::Capture
+                        }
+                    } else {
+                        MoveType::Regular
+                    }
                 } else {
                     MoveType::Invalid
                 }
             }
             Piece::Pawn(data) => {
                 let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
-
                 if dx == 0
                     && dy == pawn_settings::get_direction(data.side)
                     && chessboard.get_piece_at(end_pos) == None
@@ -214,56 +211,36 @@ impl Piece {
                 } else {
                     MoveType::Invalid
                 }
-            }
-            _ => MoveType::Regular,
-        }
-    }
-
-    pub fn try_move(mut self, chessboard: &mut Chessboard, end_pos: [u8; 2]) -> MoveResult {
-        println!("En Passant Position: {:?}", chessboard.en_passant);
-
-        let move_type = self.can_move(&chessboard, end_pos);
-        match move_type {
-            MoveType::Invalid => {
-                chessboard.apply_move(self.get_data().position, self);
-                chessboard.en_passant = None;
-                MoveResult::Invalid
-            }
-
-            MoveType::Capture => {
-                self.get_data_mut().position = end_pos;
-                chessboard.en_passant = None;
-                let captured = chessboard.apply_move(end_pos, self).unwrap();
-                MoveResult::Capture {
-                    moved: chessboard.get_piece_at(end_pos).unwrap(),
-                    captured,
-                }
-            }
-
-            MoveType::Regular => {
-                self.get_data_mut().position = end_pos;
-                chessboard.en_passant = None;
-                chessboard.apply_move(end_pos, self);
-                MoveResult::Regular(chessboard.get_piece_at(end_pos).unwrap())
-            }
-
-            MoveType::Doublestep => {
-                self.get_data_mut().position = end_pos;
-                chessboard.en_passant = Some(self.get_data().position);
-                chessboard.apply_move(end_pos, self);
-                MoveResult::Regular(chessboard.get_piece_at(end_pos).unwrap())
             },
-
-            MoveType::EnPassant => { 
-                self.get_data_mut().position = end_pos;
-                chessboard.apply_move(end_pos, self); // this should not return anything
-                let captured = chessboard.pieces.remove(&chessboard.en_passant.unwrap()).unwrap();
-                chessboard.en_passant = None;
-                MoveResult::EnPassant {
-                    moved: chessboard.get_piece_at(end_pos).unwrap(),
-                    captured,
+            Piece::King(data) => {
+                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                if dx.abs() <= 1 && dy.abs() <= 1 {
+                    if let Some(other_piece) = chessboard.get_piece_at(end_pos) {
+                        if other_piece.get_data().side == data.side {
+                            return MoveType::Invalid
+                        }
+                        return MoveType::Capture
+                    }
+                    MoveType::Regular
+                } else {
+                    MoveType::Invalid
                 }
+            },
+        };
+
+        if check_check && original_move_type != MoveType::Invalid {
+            // clone the chessboard, pretend to apply this move, and check if the king
+            // is in check
+            let mut temp_board = chessboard.clone();
+            temp_board.apply_move(self.clone(), original_move_type, end_pos);
+            if temp_board.is_in_check(self.get_data().side) {
+                MoveType::Invalid
+            } else {
+                original_move_type
             }
+
+        } else {
+            original_move_type
         }
     }
 }

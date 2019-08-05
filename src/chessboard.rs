@@ -1,4 +1,4 @@
-use crate::piece::{Piece, PieceData, Side};
+use crate::piece::{Piece, PieceData, Side, MoveType};
 use crate::BOARD_SIZE;
 use std::collections::HashMap;
 
@@ -20,6 +20,7 @@ pub enum MoveResult<'a> {
     },
 }
 
+#[derive(Clone)]
 pub struct Chessboard {
     pub pieces: HashMap<[u8; 2], Piece>,
     pub en_passant: Option<[u8; 2]>,
@@ -103,16 +104,104 @@ impl Chessboard {
 
     /// A wrapper on HashMap::insert, which just inserts the piece into the hashmap without any
     /// checks, and returns the piece it might have replaced.
-    pub fn apply_move(&mut self, pos: [u8; 2], piece: Piece) -> Option<Piece> {
+    fn insert(&mut self, pos: [u8; 2], piece: Piece) -> Option<Piece> {
         self.pieces.insert(pos, piece)
+    }
+
+    pub fn apply_move(&mut self, mut piece: Piece, move_type: MoveType, end_pos: [u8; 2]) -> MoveResult {
+        match move_type {
+            MoveType::Invalid => {
+                self.insert(piece.get_data().position, piece);
+                self.en_passant = None;
+                MoveResult::Invalid
+            },
+
+            MoveType::Capture => {
+                piece.get_data_mut().position = end_pos;
+                self.en_passant = None;
+                let captured = self.insert(end_pos, piece).unwrap();
+                MoveResult::Capture {
+                    moved: self.get_piece_at(end_pos).unwrap(),
+                    captured,
+                }
+            },
+
+            MoveType::Regular => {
+                piece.get_data_mut().position = end_pos;
+                self.en_passant = None;
+                self.insert(end_pos, piece);
+                MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
+            },
+
+            MoveType::Doublestep => {
+                piece.get_data_mut().position = end_pos;
+                self.en_passant = Some(piece.get_data().position);
+                self.insert(end_pos, piece);
+                MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
+            },
+
+            MoveType::EnPassant => { 
+                piece.get_data_mut().position = end_pos;
+                self.insert(end_pos, piece); // this should not return anything
+                let captured = self.pieces.remove(&self.en_passant.unwrap()).unwrap();
+                self.en_passant = None;
+                MoveResult::EnPassant {
+                    moved: self.get_piece_at(end_pos).unwrap(),
+                    captured,
+                }
+            }
+        }
     }
 
     pub fn try_move(&mut self, piece_ref: &Piece, end_pos: [u8; 2]) -> MoveResult {
         // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
         let piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
 
-        piece.try_move(self, end_pos)
+        let move_type = piece.can_move(self, end_pos, true);
+
+        self.apply_move(piece, move_type, end_pos)
+        //piece.try_move(self, end_pos)
     }
+
+    pub fn get_king(&self, side: Side) -> Option<&Piece> {
+        for (_pos, piece) in self.pieces.iter() {
+            if let Piece::King(data) = piece {
+                if data.side == side {
+                    return Some(piece)
+                }
+            }
+        }
+        None
+    }
+
+    pub fn is_in_check(&self, side: Side) -> bool {
+        let king = self.get_king(side).unwrap();
+        for (_pos, piece) in self.pieces.iter() {
+            if piece.get_data().side == king.get_data().side {
+                continue;
+            }
+            match piece {
+                Piece::Pawn(_data)
+                | Piece::Rook(_data)
+                | Piece::Knight(_data)
+                | Piece::Bishop(_data)
+                | Piece::Queen(_data)
+                | Piece::King(_data) => {
+                    if let MoveType::Capture = piece.can_move(self, king.get_data().position, false) {
+                        return true
+                    }
+                },
+                //Piece::King(data) => {
+                    //let (dx, dy) = Piece::get_dx_dy(data.position, king.get_data().position);
+                    //if dx.abs() <= 1 && dy.abs() <= 1 {
+                        //return true
+                    //} 
+                //}
+            }
+        }
+        false
+    }
+
 }
 
 #[cfg(test)]

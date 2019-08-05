@@ -1,5 +1,5 @@
 use crate::chessboard::{Chessboard, MoveResult};
-use crate::piece::Piece;
+use crate::piece::{Piece, Side};
 use crate::BOARD_SIZE;
 use drag_controller::{Drag, DragController};
 use graphics::Image;
@@ -145,6 +145,7 @@ impl ChessboardController {
                             },
                             _ => {}
                         };
+                        println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
                         selected = None; // drag over, no longer selected
                     }
                 }
