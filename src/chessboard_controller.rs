@@ -145,7 +145,7 @@ impl ChessboardController {
                             },
                             _ => {}
                         };
-                        println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
+                        //println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
                         selected = None; // drag over, no longer selected
                     }
                 }

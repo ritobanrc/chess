@@ -203,10 +203,13 @@ impl Piece {
                         if let Some(en_passant) = chessboard.en_passant {
                             if en_passant[0] == end_pos[0] 
                                 && (en_passant[1] as i8 + pawn_settings::get_direction(data.side)) as u8 == end_pos[1] {
-                                return MoveType::EnPassant
+                                MoveType::EnPassant
+                            } else {
+                                MoveType::Invalid
                             }
+                        } else {
+                            MoveType::Invalid
                         }
-                        MoveType::Invalid
                     }
                 } else {
                     MoveType::Invalid
@@ -219,9 +222,10 @@ impl Piece {
                         if other_piece.get_data().side == data.side {
                             return MoveType::Invalid
                         }
-                        return MoveType::Capture
+                        MoveType::Capture
+                    } else {
+                        MoveType::Regular
                     }
-                    MoveType::Regular
                 } else {
                     MoveType::Invalid
                 }
@@ -233,12 +237,11 @@ impl Piece {
             // is in check
             let mut temp_board = chessboard.clone();
             temp_board.apply_move(self.clone(), original_move_type, end_pos);
-            if temp_board.is_in_check(self.get_data().side) {
+            if temp_board.is_in_check(self.get_data().side){
                 MoveType::Invalid
             } else {
                 original_move_type
             }
-
         } else {
             original_move_type
         }
