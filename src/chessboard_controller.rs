@@ -128,7 +128,7 @@ impl ChessboardController {
                                     self.piece_rects[idx].piece.get_data().position,
                                 );
                             }
-                            MoveResult::Capture { moved, captured } 
+                            MoveResult::Capture { moved, captured }
                             | MoveResult::EnPassant { moved, captured } => {
                                 // start by updating the moved piece
                                 self.piece_rects[idx].piece = moved.clone();
@@ -142,8 +142,28 @@ impl ChessboardController {
                                     .position(|x| x.piece == captured)
                                     .unwrap();
                                 self.piece_rects.remove(pos);
-                            },
-                            _ => {}
+                            }
+                            MoveResult::Castle {
+                                king,
+                                rook,
+                                rook_init_pos,
+                            } => {
+                                // it it's a regular position, update both the rect and the piece
+                                self.piece_rects[idx].piece = king.clone();
+                                let rook = rook.clone();
+                                self.piece_rects[idx].rect = self.get_square_rect(
+                                    self.piece_rects[idx].piece.get_data().position,
+                                );
+                                let pos = self
+                                    .piece_rects
+                                    .iter()
+                                    .position(|x| x.piece.get_data().position == rook_init_pos)
+                                    .unwrap();
+                                self.piece_rects[pos].piece = rook;
+                                self.piece_rects[pos].rect = self.get_square_rect(
+                                    self.piece_rects[pos].piece.get_data().position,
+                                );
+                            }
                         };
                         //println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
                         selected = None; // drag over, no longer selected
@@ -155,6 +175,7 @@ impl ChessboardController {
     }
 }
 
+#[derive(Debug)]
 pub struct Rectangle {
     x: f64,
     y: f64,

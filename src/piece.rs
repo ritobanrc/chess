@@ -1,9 +1,20 @@
-use crate::chessboard::{Chessboard, MoveResult};
+use crate::chessboard::{CastleRights, Chessboard};
+use crate::BOARD_SIZE;
 
 #[derive(PartialEq, Hash, Debug, Clone, Copy)]
 pub enum Side {
     Light,
     Dark,
+}
+
+impl Side {
+    #[inline(always)]
+    pub fn get_back_rank(self) -> u8 {
+        match self {
+            Side::Light => 0,
+            Side::Dark => BOARD_SIZE - 1,
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -24,8 +35,7 @@ impl PieceData {
 //}
 //}
 mod pawn_settings {
-    use super::Side;
-    use crate::BOARD_SIZE;
+    use super::*;
 
     #[inline(always)]
     pub fn get_start_rank(side: Side) -> u8 {
@@ -58,6 +68,7 @@ pub enum MoveType {
     Capture,
     Doublestep,
     EnPassant,
+    Castle,
 }
 
 impl Piece {
@@ -127,11 +138,15 @@ impl Piece {
             }
             current = [current[0] + dx.signum(), current[1] + dy.signum()];
         }
-
         panic!("Piece::step_through_positions -- Iterating over positions failed to arrive at end_pos.")
     }
 
-    pub fn can_move(&self, chessboard: &Chessboard, end_pos: [u8; 2], check_check: bool) -> MoveType {
+    pub fn can_move(
+        &self,
+        chessboard: &Chessboard,
+        end_pos: [u8; 2],
+        check_check: bool,
+    ) -> MoveType {
         let original_move_type = match self {
             Piece::Bishop(data) => {
                 let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
@@ -199,37 +214,94 @@ impl Piece {
                         } else {
                             MoveType::Invalid
                         }
-                    } else {
-                        if let Some(en_passant) = chessboard.en_passant {
-                            if en_passant[0] == end_pos[0] 
-                                && (en_passant[1] as i8 + pawn_settings::get_direction(data.side)) as u8 == end_pos[1] {
-                                MoveType::EnPassant
-                            } else {
-                                MoveType::Invalid
-                            }
+                    } else if let Some(en_passant) = chessboard.en_passant {
+                        if en_passant[0] == end_pos[0]
+                            && (en_passant[1] as i8 + pawn_settings::get_direction(data.side)) as u8
+                                == end_pos[1]
+                        {
+                            MoveType::EnPassant
                         } else {
                             MoveType::Invalid
                         }
+                    } else {
+                        MoveType::Invalid
                     }
                 } else {
                     MoveType::Invalid
                 }
-            },
+            }
             Piece::King(data) => {
                 let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
                 if dx.abs() <= 1 && dy.abs() <= 1 {
                     if let Some(other_piece) = chessboard.get_piece_at(end_pos) {
                         if other_piece.get_data().side == data.side {
-                            return MoveType::Invalid
+                            return MoveType::Invalid;
                         }
                         MoveType::Capture
                     } else {
                         MoveType::Regular
                     }
                 } else {
-                    MoveType::Invalid
+                    // Check for castling. From wikipedia, the following
+                    // conditions are necessary.
+                    //The king and the chosen rook are on the player's first rank.[3]
+                    // Neither the king nor the chosen rook has previously moved.
+                    //There are no pieces between the king and the chosen rook.
+                    //The king is not currently in check.
+                    //The king does not pass through a square that is attacked by an enemy piece.[4] TODO
+                    //The king does not end up in check. (True of any legal move.)
+
+                    // 1 and 2 automatically checked here
+                    let castle_type = chessboard
+                        .get_castle_rights(data.side)
+                        .check_end_pos(end_pos, data.side);
+                    if castle_type == CastleRights::NoRights {
+                        return MoveType::Invalid;
+                    }
+
+                    let rook = castle_type.get_rook_init_pos(data.side).unwrap();
+                    //There are no pieces between the king and the chosen rook.
+                    for x in data.position[0]..rook[0] {
+                        if let Some(_p) = chessboard.get_piece_at([x, data.side.get_back_rank()]) {
+                            return MoveType::Invalid;
+                        }
+                    }
+
+                    // The king is not currently in check.
+                    // We can't just use the currently existing copy of the board, because the king
+                    // has been removed from there.
+                    {
+                        // instead, create a temporary copy of the chessboard, insert the king there, and check.
+                        // While it may be possible to move a clone into and out of the actual
+                        // chessboard, I'm not certain if other stuff will break. Better to make a
+                        // clone.
+                        let mut temp_chessboard = chessboard.clone();
+                        temp_chessboard.insert(data.position, self.clone());
+                        if temp_chessboard.is_king_in_check(&self) {
+                            return MoveType::Invalid;
+                        }
+                    }
+                    {
+                        // check if the king will move through check.
+                        let mut temp_chessboard = chessboard.clone();
+                        let (dx, _dy) = Piece::get_dx_dy(data.position, end_pos);
+                        let mut temp_king = self.clone();
+                        let temp_pos = [
+                            (data.position[0] as i8 + dx.signum()) as u8,
+                            data.position[1],
+                        ];
+                        temp_king.get_data_mut().position = temp_pos;
+                        temp_chessboard.insert(temp_pos, temp_king);
+                        if temp_chessboard
+                            .is_king_in_check(temp_chessboard.get_piece_at(temp_pos).unwrap())
+                        {
+                            return MoveType::Invalid;
+                        }
+                    }
+
+                    MoveType::Castle
                 }
-            },
+            }
         };
 
         if check_check && original_move_type != MoveType::Invalid {
@@ -237,7 +309,7 @@ impl Piece {
             // is in check
             let mut temp_board = chessboard.clone();
             temp_board.apply_move(self.clone(), original_move_type, end_pos);
-            if temp_board.is_in_check(self.get_data().side){
+            if temp_board.is_side_in_check(self.get_data().side) {
                 MoveType::Invalid
             } else {
                 original_move_type

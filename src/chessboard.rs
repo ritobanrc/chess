@@ -1,4 +1,4 @@
-use crate::piece::{Piece, PieceData, Side, MoveType};
+use crate::piece::{MoveType, Piece, PieceData, Side};
 use crate::BOARD_SIZE;
 use std::collections::HashMap;
 
@@ -13,6 +13,7 @@ pub enum MoveResult<'a> {
     Castle {
         king: &'a Piece,
         rook: &'a Piece,
+        rook_init_pos: [u8; 2],
     },
     EnPassant {
         moved: &'a Piece,
@@ -20,10 +21,127 @@ pub enum MoveResult<'a> {
     },
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum CastleRights {
+    NoRights,
+    KingSide,
+    QueenSide,
+    Both,
+}
+
+impl CastleRights {
+    /// Returns NoRights if the castle is invalid,
+    /// or KingSide or Queenside if if the castle is valid.
+    /// Will not return Both
+    pub fn check_end_pos(self, end_pos: [u8; 2], side: Side) -> CastleRights {
+        if side.get_back_rank() != end_pos[1] {
+            CastleRights::NoRights
+        } else {
+            match self {
+                CastleRights::NoRights => CastleRights::NoRights,
+                CastleRights::KingSide => {
+                    if end_pos[0] == 6u8 {
+                        CastleRights::KingSide
+                    } else {
+                        CastleRights::NoRights
+                    }
+                }
+                CastleRights::QueenSide => {
+                    if end_pos[0] == 2u8 {
+                        CastleRights::QueenSide
+                    } else {
+                        CastleRights::NoRights
+                    }
+                }
+                CastleRights::Both => {
+                    if end_pos[0] == 6u8 {
+                        CastleRights::KingSide
+                    } else if end_pos[0] == 2u8 {
+                        CastleRights::QueenSide
+                    } else {
+                        CastleRights::NoRights
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn remove_rights(self, to_remove: CastleRights) -> CastleRights {
+        if self == CastleRights::NoRights || to_remove == CastleRights::NoRights {
+            return self; // nothing changes
+        }
+        if to_remove == CastleRights::Both || self == to_remove {
+            return CastleRights::NoRights; // if both are removed, or what we remove is all we had, nothing is left.
+        }
+        if self == CastleRights::Both {
+            match to_remove {
+                CastleRights::QueenSide => return CastleRights::KingSide,
+                CastleRights::KingSide => return CastleRights::QueenSide,
+                _ => {}
+            }
+        }
+        self // only if self and to_remove are mutually exclusive, so nothing changes.
+    }
+
+    pub fn get_rook_final_pos(self, side: Side) -> Result<[u8; 2], String> {
+        match self {
+            CastleRights::NoRights | CastleRights::Both => Err(format!(
+                "CastleRights::get_rook -- {:?} is not a valid input.",
+                self
+            )),
+            CastleRights::KingSide => Ok([BOARD_SIZE - 3, side.get_back_rank()]),
+            CastleRights::QueenSide => Ok([3, side.get_back_rank()]),
+        }
+    }
+
+    pub fn get_rook_init_pos(self, side: Side) -> Result<[u8; 2], String> {
+        match self {
+            CastleRights::NoRights | CastleRights::Both => Err(format!(
+                "CastleRights::get_rook -- {:?} is not a valid input.",
+                self
+            )),
+            CastleRights::KingSide => Ok([BOARD_SIZE - 1, side.get_back_rank()]),
+            CastleRights::QueenSide => Ok([0, side.get_back_rank()]),
+        }
+    }
+
+    pub fn get_castle_rights_for_rook(piece: &Piece) -> Result<CastleRights, &str> {
+        let pos = piece.get_data().position;
+        if pos[1] != piece.get_data().side.get_back_rank() {
+            Err("Rook not on back rank.")
+        } else if pos[0] == 0 {
+            Ok(CastleRights::QueenSide)
+        } else if pos[0] == BOARD_SIZE - 1 {
+            Ok(CastleRights::KingSide)
+        } else {
+            Err("Rook not where expected.")
+        }
+    }
+
+    /// Returns the rook for this castle. Will return error if NoRights or Both.
+    /// Should be used in conjunction with check_end_pos.
+    pub fn get_rook(self, chessboard: &Chessboard, side: Side) -> Result<&Piece, String> {
+        match self {
+            CastleRights::NoRights | CastleRights::Both => Err(format!(
+                "CastleRights::get_rook -- {:?} is not a valid input.",
+                self
+            )),
+            CastleRights::KingSide => chessboard
+                .get_piece_at(self.get_rook_init_pos(side)?)
+                .ok_or(String::from("Kingside rook not found")),
+            CastleRights::QueenSide => chessboard
+                .get_piece_at(self.get_rook_init_pos(side)?)
+                .ok_or(String::from("Queenside rook not found")),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Chessboard {
     pub pieces: HashMap<[u8; 2], Piece>,
     pub en_passant: Option<[u8; 2]>,
+    light_castle: CastleRights,
+    dark_castle: CastleRights,
 }
 
 pub fn create_piece(
@@ -48,6 +166,8 @@ impl Chessboard {
         Chessboard {
             pieces: HashMap::new(),
             en_passant: None,
+            light_castle: CastleRights::Both,
+            dark_castle: CastleRights::Both,
         }
     }
 
@@ -82,6 +202,15 @@ impl Chessboard {
         Chessboard {
             pieces,
             en_passant: None,
+            light_castle: CastleRights::Both,
+            dark_castle: CastleRights::Both,
+        }
+    }
+
+    pub fn get_castle_rights(&self, side: Side) -> CastleRights {
+        match side {
+            Side::Light => self.light_castle,
+            Side::Dark => self.dark_castle,
         }
     }
 
@@ -104,43 +233,94 @@ impl Chessboard {
 
     /// A wrapper on HashMap::insert, which just inserts the piece into the hashmap without any
     /// checks, and returns the piece it might have replaced.
-    fn insert(&mut self, pos: [u8; 2], piece: Piece) -> Option<Piece> {
+    pub fn insert(&mut self, pos: [u8; 2], piece: Piece) -> Option<Piece> {
         self.pieces.insert(pos, piece)
     }
 
-    pub fn apply_move(&mut self, mut piece: Piece, move_type: MoveType, end_pos: [u8; 2]) -> MoveResult {
+    fn remove_all_castle_rights(&mut self, side: Side) {
+        match side {
+            Side::Light => self.light_castle = self.light_castle.remove_rights(CastleRights::Both),
+            Side::Dark => self.dark_castle = self.dark_castle.remove_rights(CastleRights::Both),
+        }
+    }
+
+    fn set_castle_rights(&mut self, side: Side, rights: CastleRights) {
+        match side {
+            Side::Light => self.light_castle = rights,
+            Side::Dark => self.dark_castle = rights,
+        }
+    }
+
+    pub fn apply_move(
+        &mut self,
+        mut piece: Piece,
+        move_type: MoveType,
+        end_pos: [u8; 2],
+    ) -> MoveResult {
         match move_type {
             MoveType::Invalid => {
                 self.insert(piece.get_data().position, piece);
                 self.en_passant = None;
                 MoveResult::Invalid
-            },
+            }
 
             MoveType::Capture => {
+                match &piece {
+                    Piece::King(data) => self.remove_all_castle_rights(data.side),
+                    Piece::Rook(data) => {
+                        let to_remove = CastleRights::get_castle_rights_for_rook(&piece);
+                        // if it returned an error, don't worry about it.
+                        // it probably means that it's already been dealt with earlier.
+                        //println!("Removing Castle Rights {:?}", to_remove);
+                        if let Ok(rights) = to_remove {
+                            self.set_castle_rights(
+                                data.side,
+                                self.get_castle_rights(data.side).remove_rights(rights),
+                            );
+                        }
+                    }
+                    _ => {}
+                };
                 piece.get_data_mut().position = end_pos;
-                self.en_passant = None;
                 let captured = self.insert(end_pos, piece).unwrap();
+                self.en_passant = None;
                 MoveResult::Capture {
                     moved: self.get_piece_at(end_pos).unwrap(),
                     captured,
                 }
-            },
+            }
 
             MoveType::Regular => {
+                match &piece {
+                    Piece::King(data) => self.remove_all_castle_rights(data.side),
+                    Piece::Rook(data) => {
+                        let to_remove = CastleRights::get_castle_rights_for_rook(&piece);
+                        // if it returned an error, don't worry about it.
+                        // it probably means that it's already been dealt with earlier.
+                        //println!("Removing Castle Rights {:?}", to_remove);
+                        if let Ok(rights) = to_remove {
+                            self.set_castle_rights(
+                                data.side,
+                                self.get_castle_rights(data.side).remove_rights(rights),
+                            );
+                        }
+                    }
+                    _ => {}
+                };
                 piece.get_data_mut().position = end_pos;
                 self.en_passant = None;
                 self.insert(end_pos, piece);
                 MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
-            },
+            }
 
             MoveType::Doublestep => {
                 piece.get_data_mut().position = end_pos;
                 self.en_passant = Some(piece.get_data().position);
                 self.insert(end_pos, piece);
                 MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
-            },
+            }
 
-            MoveType::EnPassant => { 
+            MoveType::EnPassant => {
                 piece.get_data_mut().position = end_pos;
                 self.insert(end_pos, piece); // this should not return anything
                 let captured = self.pieces.remove(&self.en_passant.unwrap()).unwrap();
@@ -149,6 +329,34 @@ impl Chessboard {
                     moved: self.get_piece_at(end_pos).unwrap(),
                     captured,
                 }
+            }
+
+            MoveType::Castle => {
+                let castle_type = self
+                    .get_castle_rights(piece.get_data().side)
+                    .check_end_pos(end_pos, piece.get_data().side);
+                let rook_pos = castle_type
+                    .get_rook_init_pos(piece.get_data().side)
+                    .unwrap();
+                // move the king
+                piece.get_data_mut().position = end_pos;
+
+                let mut rook = self.pieces.remove(&rook_pos).unwrap();
+                let rook_end_pos = castle_type
+                    .get_rook_final_pos(piece.get_data().side)
+                    .unwrap();
+                rook.get_data_mut().position = rook_end_pos;
+                self.en_passant = None;
+                // we can only castle once
+                self.remove_all_castle_rights(piece.get_data().side);
+                self.insert(rook_end_pos, rook);
+                self.insert(end_pos, piece);
+                MoveResult::Castle {
+                    king: self.get_piece_at(end_pos).unwrap(),
+                    rook: self.get_piece_at(rook_end_pos).unwrap(),
+                    rook_init_pos: rook_pos,
+                }
+                //MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
             }
         }
     }
@@ -167,15 +375,15 @@ impl Chessboard {
         for (_pos, piece) in self.pieces.iter() {
             if let Piece::King(data) = piece {
                 if data.side == side {
-                    return Some(piece)
+                    return Some(piece);
                 }
             }
         }
         None
     }
 
-    pub fn is_in_check(&self, side: Side) -> bool {
-        let king = self.get_king(side).unwrap();
+    pub fn is_king_in_check(&self, king: &Piece) -> bool {
+        //let king = self.get_king(side).unwrap();
         for (_pos, piece) in self.pieces.iter() {
             if piece.get_data().side == king.get_data().side {
                 continue;
@@ -187,21 +395,20 @@ impl Chessboard {
                 | Piece::Bishop(_data)
                 | Piece::Queen(_data)
                 | Piece::King(_data) => {
-                    if let MoveType::Capture = piece.can_move(self, king.get_data().position, false) {
-                        return true
+                    if let MoveType::Capture = piece.can_move(self, king.get_data().position, false)
+                    {
+                        return true;
                     }
-                },
-                //Piece::King(data) => {
-                    //let (dx, dy) = Piece::get_dx_dy(data.position, king.get_data().position);
-                    //if dx.abs() <= 1 && dy.abs() <= 1 {
-                        //return true
-                    //} 
-                //}
+                }
             }
         }
         false
     }
 
+    pub fn is_side_in_check(&self, side: Side) -> bool {
+        let king = self.get_king(side).unwrap();
+        self.is_king_in_check(king)
+    }
 }
 
 #[cfg(test)]

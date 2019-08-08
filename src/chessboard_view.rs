@@ -144,7 +144,7 @@ impl ChessboardViewSettings {
         );
         ChessboardViewSettings {
             light_square_color: [0.961, 0.961, 0.863, 1.0],
-            dark_square_color: [0.545, 0.271, 0.075, 1.0],
+            dark_square_color: [0.565, 0.702, 0.427, 1.0],
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
             board_edge_size: 4.0,
             textures,
