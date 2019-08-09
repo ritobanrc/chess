@@ -19,6 +19,11 @@ pub enum MoveResult<'a> {
         moved: &'a Piece,
         captured: Piece,
     },
+    PawnPromotion(&'a Piece),
+    PawnPromotionCapture {
+        moved: &'a Piece,
+        captured: Piece, // capturing a piece gives up ownership
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -256,6 +261,7 @@ impl Chessboard {
         mut piece: Piece,
         move_type: MoveType,
         end_pos: [u8; 2],
+        promotion: Option<&Fn(PieceData) -> Piece>,
     ) -> MoveResult {
         match move_type {
             MoveType::Invalid => {
@@ -358,16 +364,44 @@ impl Chessboard {
                 }
                 //MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
             }
+
+            MoveType::PawnPromotion => {
+                if let Piece::Pawn(data) = piece {
+                    piece = promotion.expect("Chessboard::apply_move -- pawn promotion Fn is none")(data);
+                }
+                piece.get_data_mut().position = end_pos;
+                self.en_passant = None;
+                self.insert(end_pos, piece);
+                MoveResult::PawnPromotion(self.get_piece_at(end_pos).unwrap())
+            }
+
+            MoveType::PawnPromotionCapture => {
+                if let Piece::Pawn(data) = piece {
+                    piece = promotion.expect("Chessboard::apply_move -- pawn promotion Fn is none")(data);
+                }
+                piece.get_data_mut().position = end_pos;
+                let captured = self.insert(end_pos, piece).unwrap();
+                self.en_passant = None;
+                MoveResult::PawnPromotionCapture {
+                    moved: self.get_piece_at(end_pos).unwrap(),
+                    captured,
+                }
+            }
         }
     }
 
-    pub fn try_move(&mut self, piece_ref: &Piece, end_pos: [u8; 2]) -> MoveResult {
+    pub fn try_move(
+        &mut self,
+        piece_ref: &Piece,
+        end_pos: [u8; 2],
+        promotion: Option<&Fn(PieceData) -> Piece>,
+    ) -> MoveResult {
         // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
         let piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
 
-        let move_type = piece.can_move(self, end_pos, true);
+        let move_type = piece.can_move(self, end_pos, true, promotion);
 
-        self.apply_move(piece, move_type, end_pos)
+        self.apply_move(piece, move_type, end_pos, promotion)
         //piece.try_move(self, end_pos)
     }
 
@@ -395,7 +429,13 @@ impl Chessboard {
                 | Piece::Bishop(_data)
                 | Piece::Queen(_data)
                 | Piece::King(_data) => {
-                    if let MoveType::Capture = piece.can_move(self, king.get_data().position, false)
+                    // NOTE: If you must promote, "promote" to a pawn. 
+                    // This refers to where the pawn directly threatens the
+                    // king. 
+                    // Therefore, what it promotes to doesn't matter.
+                    // To emphasize this, we "promote" to a pawn.
+                    let move_type = piece.can_move(self, king.get_data().position, false, Some(&Piece::Pawn));
+                    if let MoveType::Capture | MoveType::PawnPromotionCapture = move_type
                     {
                         return true;
                     }

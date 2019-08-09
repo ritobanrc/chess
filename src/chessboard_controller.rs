@@ -90,18 +90,20 @@ impl ChessboardController {
             true
         });
 
+        self.selected = selected;
         if let Some(drag) = local_drag {
             match drag {
                 Drag::Interrupt | Drag::Start(_, _) => {} // do nothing. start already handled
                 Drag::Move(x, y) => {
                     //println!("Move {}{}", x, y);
-                    if let Some(idx) = selected {
+                    if let Some(idx) = self.selected {
                         self.piece_rects[idx].rect.update_center(x, y);
                     }
                 }
                 Drag::End(x, y) => {
-                    // this feels about right.
+                    // if something is selected
                     if let Some(idx) = selected {
+                        // this feels about right.
                         let pos: [u8; 2] = [
                             ((x - self.position[0]) / self.square_size()).floor() as u8,
                             BOARD_SIZE - ((y - self.position[0]) / self.square_size()).ceil() as u8,
@@ -109,7 +111,7 @@ impl ChessboardController {
 
                         // get the chessboard, tell it to try the move.
                         let move_result =
-                            self.chessboard.try_move(&self.piece_rects[idx].piece, pos);
+                            self.chessboard.try_move(&self.piece_rects[idx].piece, pos, Some(&Piece::Queen));
 
                         // In the event that some idiot (cough..me..cough) made it so the
                         // chessboard pieces aren't directly linked to the piece rect pieces,
@@ -121,7 +123,7 @@ impl ChessboardController {
                                     self.piece_rects[idx].piece.get_data().position,
                                 );
                             }
-                            MoveResult::Regular(p) => {
+                            MoveResult::Regular(p) | MoveResult::PawnPromotion(p) => {
                                 // it it's a regular position, update both the rect and the piece
                                 self.piece_rects[idx].piece = p.clone();
                                 self.piece_rects[idx].rect = self.get_square_rect(
@@ -129,7 +131,8 @@ impl ChessboardController {
                                 );
                             }
                             MoveResult::Capture { moved, captured }
-                            | MoveResult::EnPassant { moved, captured } => {
+                            | MoveResult::EnPassant { moved, captured }
+                            | MoveResult::PawnPromotionCapture { moved, captured } => {
                                 // start by updating the moved piece
                                 self.piece_rects[idx].piece = moved.clone();
                                 self.piece_rects[idx].rect = self.get_square_rect(
@@ -166,12 +169,11 @@ impl ChessboardController {
                             }
                         };
                         //println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
-                        selected = None; // drag over, no longer selected
+                        self.selected = None; // drag over, no longer selected
                     }
                 }
             };
         }
-        self.selected = selected;
     }
 }
 

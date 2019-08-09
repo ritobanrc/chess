@@ -15,6 +15,13 @@ impl Side {
             Side::Dark => BOARD_SIZE - 1,
         }
     }
+
+    pub fn other(self) -> Side {
+        match self {
+            Side::Light => Side::Dark,
+            Side::Dark => Side::Light,
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -69,6 +76,8 @@ pub enum MoveType {
     Doublestep,
     EnPassant,
     Castle,
+    PawnPromotion,
+    PawnPromotionCapture,
 }
 
 impl Piece {
@@ -146,6 +155,7 @@ impl Piece {
         chessboard: &Chessboard,
         end_pos: [u8; 2],
         check_check: bool,
+        promotion: Option<&Fn(PieceData) -> Piece>,
     ) -> MoveType {
         let original_move_type = match self {
             Piece::Bishop(data) => {
@@ -193,7 +203,11 @@ impl Piece {
                     && chessboard.get_piece_at(end_pos) == None
                 {
                     // regular move forward
-                    MoveType::Regular
+                    if end_pos[1] == data.side.other().get_back_rank() {
+                        MoveType::PawnPromotion
+                    } else {
+                        MoveType::Regular
+                    }
                 } else if data.position[1] == pawn_settings::get_start_rank(data.side)
                     && dx == 0
                     && dy.abs() == 2
@@ -210,7 +224,12 @@ impl Piece {
                     let capture = chessboard.get_piece_at(end_pos);
                     if let Some(capture) = capture {
                         if capture.get_data().side != data.side {
-                            MoveType::Capture
+                            //MoveType::Capture
+                            if end_pos[1] == data.side.other().get_back_rank() {
+                                MoveType::PawnPromotionCapture
+                            } else {
+                                MoveType::Capture
+                            }
                         } else {
                             MoveType::Invalid
                         }
@@ -308,7 +327,7 @@ impl Piece {
             // clone the chessboard, pretend to apply this move, and check if the king
             // is in check
             let mut temp_board = chessboard.clone();
-            temp_board.apply_move(self.clone(), original_move_type, end_pos);
+            temp_board.apply_move(self.clone(), original_move_type, end_pos, promotion);
             if temp_board.is_side_in_check(self.get_data().side) {
                 MoveType::Invalid
             } else {
