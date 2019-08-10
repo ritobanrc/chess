@@ -19,18 +19,23 @@ use crate::chessboard_controller::ChessboardController;
 use crate::chessboard_view::{ChessboardView, ChessboardViewSettings};
 
 pub const BOARD_SIZE: u8 = 8;
+pub const BOARD_BORDER_SIZE: f64 = 5.0;
+pub const WIDTH: f64 = 600.0;
+pub const HEIGHT: f64 = 450.0 + 2.0*BOARD_BORDER_SIZE;
+
 
 fn main() {
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
 
     // Create an Glutin window.
-    let mut window: Window = WindowSettings::new("Chess", [512, 405])
+    let mut window: Window = WindowSettings::new("Chess", [WIDTH, HEIGHT])
         .graphics_api(opengl)
         .exit_on_esc(true)
         .resizable(false)
         .build()
         .unwrap();
+
 
     let chessboard = Chessboard::standard();
     let view_settings = { ChessboardViewSettings::new() };
@@ -48,6 +53,7 @@ fn main() {
                 use graphics::clear;
                 clear([0.0; 4], gl);
                 view.draw(&controller, &c, gl);
+
             });
         }
         controller.event(&e);

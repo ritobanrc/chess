@@ -1,6 +1,6 @@
 use crate::piece::{Piece, Side};
 use crate::ChessboardController;
-use crate::BOARD_SIZE;
+use crate::{BOARD_SIZE, BOARD_BORDER_SIZE};
 use graphics;
 use graphics::types::Color;
 use opengl_graphics::{GlGraphics, Texture, TextureSettings};
@@ -146,7 +146,7 @@ impl ChessboardViewSettings {
             light_square_color: [0.961, 0.961, 0.863, 1.0],
             dark_square_color: [0.565, 0.702, 0.427, 1.0],
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
-            board_edge_size: 4.0,
+            board_edge_size: BOARD_BORDER_SIZE,
             textures,
         }
     }

@@ -1,6 +1,6 @@
 use crate::chessboard::{Chessboard, MoveResult};
-use crate::piece::{Piece, Side};
-use crate::BOARD_SIZE;
+use crate::piece::{Piece, Side, PieceData};
+use crate::{BOARD_SIZE, WIDTH, HEIGHT, BOARD_BORDER_SIZE};
 use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
@@ -18,6 +18,7 @@ pub struct ChessboardController {
     pub piece_rects: Vec<PieceRect>,
     drag_controller: DragController,
     selected: Option<usize>, // This is a terrible hack, but there isn't any other way to have a reference into piece_rects
+    pawn_promotion_dialog: Option<Rectangle>,
     chessboard: Chessboard,
 }
 
@@ -25,11 +26,12 @@ impl ChessboardController {
     pub fn new(chessboard: Chessboard) -> ChessboardController {
         let piece_rects = Vec::new();
         ChessboardController {
-            position: [4.0; 2],
-            size: 400.0,
+            position: [BOARD_BORDER_SIZE; 2],
+            size: HEIGHT - 2.0*BOARD_BORDER_SIZE,
             piece_rects,
             drag_controller: DragController::new(),
             selected: None,
+            pawn_promotion_dialog: None,
             chessboard,
         }
     }
@@ -62,6 +64,71 @@ impl ChessboardController {
     #[inline(always)]
     pub fn square_size(&self) -> f64 {
         self.size / f64::from(BOARD_SIZE)
+    }
+
+    fn try_move(&mut self,
+                idx: usize,
+                pos: [u8; 2],
+                promotion: Option<&Fn(PieceData) -> Piece>) {
+        // get the chessboard, tell it to try the move.
+        let move_result =
+            self.chessboard.try_move(&self.piece_rects[idx].piece, pos, Some(&Piece::Queen));
+
+        // In the event that some idiot (cough..me..cough) made it so the
+        // chessboard pieces aren't directly linked to the piece rect pieces,
+        // set the piece_rect pieces to be the chessboard pieces
+        match move_result {
+            MoveResult::Invalid => {
+                // it it's invalid, set the position equal to wherever it is.
+                self.piece_rects[idx].rect = self.get_square_rect(
+                    self.piece_rects[idx].piece.get_data().position,
+                    );
+            }
+            MoveResult::Regular(p) | MoveResult::PawnPromotion(p) => {
+                // it it's a regular position, update both the rect and the piece
+                self.piece_rects[idx].piece = p.clone();
+                self.piece_rects[idx].rect = self.get_square_rect(
+                    self.piece_rects[idx].piece.get_data().position,
+                    );
+            }
+            MoveResult::Capture { moved, captured }
+            | MoveResult::EnPassant { moved, captured }
+            | MoveResult::PawnPromotionCapture { moved, captured } => {
+                // start by updating the moved piece
+                self.piece_rects[idx].piece = moved.clone();
+                self.piece_rects[idx].rect = self.get_square_rect(
+                    self.piece_rects[idx].piece.get_data().position,
+                    );
+                // now remove the captured piece
+                let pos = self
+                    .piece_rects
+                    .iter()
+                    .position(|x| x.piece == captured)
+                    .unwrap();
+                self.piece_rects.remove(pos);
+            }
+            MoveResult::Castle {
+                king,
+                rook,
+                rook_init_pos,
+            } => {
+                // it it's a regular position, update both the rect and the piece
+                self.piece_rects[idx].piece = king.clone();
+                let rook = rook.clone();
+                self.piece_rects[idx].rect = self.get_square_rect(
+                    self.piece_rects[idx].piece.get_data().position,
+                    );
+                let pos = self
+                    .piece_rects
+                    .iter()
+                    .position(|x| x.piece.get_data().position == rook_init_pos)
+                    .unwrap();
+                self.piece_rects[pos].piece = rook;
+                self.piece_rects[pos].rect = self.get_square_rect(
+                    self.piece_rects[pos].piece.get_data().position,
+                    );
+            }
+        };
     }
 
     /// Handle events to the chessboard (piece dragging)
@@ -109,65 +176,12 @@ impl ChessboardController {
                             BOARD_SIZE - ((y - self.position[0]) / self.square_size()).ceil() as u8,
                         ];
 
-                        // get the chessboard, tell it to try the move.
-                        let move_result =
-                            self.chessboard.try_move(&self.piece_rects[idx].piece, pos, Some(&Piece::Queen));
-
-                        // In the event that some idiot (cough..me..cough) made it so the
-                        // chessboard pieces aren't directly linked to the piece rect pieces,
-                        // set the piece_rect pieces to be the chessboard pieces
-                        match move_result {
-                            MoveResult::Invalid => {
-                                // it it's invalid, set the position equal to wherever it is.
-                                self.piece_rects[idx].rect = self.get_square_rect(
-                                    self.piece_rects[idx].piece.get_data().position,
-                                );
-                            }
-                            MoveResult::Regular(p) | MoveResult::PawnPromotion(p) => {
-                                // it it's a regular position, update both the rect and the piece
-                                self.piece_rects[idx].piece = p.clone();
-                                self.piece_rects[idx].rect = self.get_square_rect(
-                                    self.piece_rects[idx].piece.get_data().position,
-                                );
-                            }
-                            MoveResult::Capture { moved, captured }
-                            | MoveResult::EnPassant { moved, captured }
-                            | MoveResult::PawnPromotionCapture { moved, captured } => {
-                                // start by updating the moved piece
-                                self.piece_rects[idx].piece = moved.clone();
-                                self.piece_rects[idx].rect = self.get_square_rect(
-                                    self.piece_rects[idx].piece.get_data().position,
-                                );
-                                // now remove the captured piece
-                                let pos = self
-                                    .piece_rects
-                                    .iter()
-                                    .position(|x| x.piece == captured)
-                                    .unwrap();
-                                self.piece_rects.remove(pos);
-                            }
-                            MoveResult::Castle {
-                                king,
-                                rook,
-                                rook_init_pos,
-                            } => {
-                                // it it's a regular position, update both the rect and the piece
-                                self.piece_rects[idx].piece = king.clone();
-                                let rook = rook.clone();
-                                self.piece_rects[idx].rect = self.get_square_rect(
-                                    self.piece_rects[idx].piece.get_data().position,
-                                );
-                                let pos = self
-                                    .piece_rects
-                                    .iter()
-                                    .position(|x| x.piece.get_data().position == rook_init_pos)
-                                    .unwrap();
-                                self.piece_rects[pos].piece = rook;
-                                self.piece_rects[pos].rect = self.get_square_rect(
-                                    self.piece_rects[pos].piece.get_data().position,
-                                );
-                            }
-                        };
+                        if let Piece::Pawn(data) = &self.piece_rects[idx].piece {
+                            // figure out what to promote to
+                            self.try_move(idx, pos, Some(&Piece::Queen));
+                        } else {
+                            self.try_move(idx, pos, None);
+                        }
                         //println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
                         self.selected = None; // drag over, no longer selected
                     }
