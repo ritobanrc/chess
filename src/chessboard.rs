@@ -153,7 +153,7 @@ pub fn create_piece(
     pieces: &mut HashMap<[u8; 2], Piece>,
     pos: [u8; 2],
     side: Side,
-    piece_type: &Fn(PieceData) -> Piece,
+    piece_type: &dyn Fn(PieceData) -> Piece,
 ) {
     let data = PieceData::new(pos, side);
     pieces.insert(pos, piece_type(data));
@@ -261,7 +261,7 @@ impl Chessboard {
         mut piece: Piece,
         move_type: MoveType,
         end_pos: [u8; 2],
-        promotion: Option<&Fn(PieceData) -> Piece>,
+        promotion: Option<&dyn Fn(PieceData) -> Piece>,
     ) -> MoveResult {
         match move_type {
             MoveType::Invalid => {
@@ -394,7 +394,7 @@ impl Chessboard {
         &mut self,
         piece_ref: &Piece,
         end_pos: [u8; 2],
-        promotion: Option<&Fn(PieceData) -> Piece>,
+        promotion: Option<&dyn Fn(PieceData) -> Piece>,
     ) -> MoveResult {
         // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
         let piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();

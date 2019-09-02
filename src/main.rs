@@ -48,7 +48,10 @@ fn main() {
     let sidebar_size = WIDTH - HEIGHT;
     let sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
 
-    let mut cache = GlyphCache::new("fonts/Montserrat-Regular.ttf", (), TextureSettings::new()).unwrap();
+    let mut cache = GlyphCache::new("fonts/RobotoMono-Thin.ttf",
+                                    (),
+                                    TextureSettings::new().filter(Filter::Linear))
+        .unwrap();
 
     // Create a new game and run it.
     let mut gl = GlGraphics::new(opengl);
@@ -58,16 +61,9 @@ fn main() {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {
                 use graphics::clear;
-                use graphics::text;
-                use graphics::Transformed;
                 clear([0.0; 4], gl);
                 view.draw(&controller, &c, gl);
-
-                sidebar.draw(&c, gl);
-
-                let transform = c.transform.trans(WIDTH - sidebar_size + 10.0, 100.0);
-                text::Text::new(13)
-                    .draw("Hello world!", &mut cache, &c.draw_state, transform, gl).unwrap();
+                sidebar.draw(&mut cache, &c.draw_state, c.transform, gl);
             });
         }
         controller.event(&e);

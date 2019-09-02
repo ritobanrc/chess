@@ -18,7 +18,6 @@ pub struct ChessboardController {
     pub piece_rects: Vec<PieceRect>,
     drag_controller: DragController,
     selected: Option<usize>, // This is a terrible hack, but there isn't any other way to have a reference into piece_rects
-    pawn_promotion_dialog: Option<Rectangle>,
     chessboard: Chessboard,
 }
 
@@ -31,7 +30,6 @@ impl ChessboardController {
             piece_rects,
             drag_controller: DragController::new(),
             selected: None,
-            pawn_promotion_dialog: None,
             chessboard,
         }
     }
@@ -69,10 +67,10 @@ impl ChessboardController {
     fn try_move(&mut self,
                 idx: usize,
                 pos: [u8; 2],
-                promotion: Option<&Fn(PieceData) -> Piece>) {
+                promotion: Option<&dyn Fn(PieceData) -> Piece>) {
         // get the chessboard, tell it to try the move.
         let move_result =
-            self.chessboard.try_move(&self.piece_rects[idx].piece, pos, Some(&Piece::Queen));
+            self.chessboard.try_move(&self.piece_rects[idx].piece, pos, promotion);
 
         // In the event that some idiot (cough..me..cough) made it so the
         // chessboard pieces aren't directly linked to the piece rect pieces,
@@ -176,8 +174,8 @@ impl ChessboardController {
                             BOARD_SIZE - ((y - self.position[0]) / self.square_size()).ceil() as u8,
                         ];
 
-                        if let Piece::Pawn(data) = &self.piece_rects[idx].piece {
-                            // figure out what to promote to
+                        if let Piece::Pawn(_data) = &self.piece_rects[idx].piece {
+                            // TODO: figure out what to promote to
                             self.try_move(idx, pos, Some(&Piece::Queen));
                         } else {
                             self.try_move(idx, pos, None);
@@ -191,7 +189,8 @@ impl ChessboardController {
     }
 }
 
-#[derive(Debug)]
+// NOTE: There's no reason for this to be in chessboard_controller, but I'm too lazy to move it.
+#[derive(Debug, Copy, Clone)]
 pub struct Rectangle {
     x: f64,
     y: f64,
@@ -212,9 +211,34 @@ impl Rectangle {
         self.x = new_x - self.w / 2.0;
         self.y = new_y - self.w / 2.0;
     }
+
+    pub fn left(&self) -> f64 {
+        self.x
+    }
+
+    pub fn top(&self) -> f64 {
+        self.y
+    }
+
+
+    pub fn right(&self) -> f64 {
+        self.x + self.w
+    }
+
+    pub fn bottom(&self) -> f64 {
+        self.y + self.h
+    }
+}
+
+impl Into<[f64; 4]> for Rectangle {
+    #[inline(always)]
+    fn into(self) -> [f64; 4] {
+        [self.x, self.y, self.w, self.h]
+    }
 }
 
 // TODO: I don't know if this makes any sort of sense
+// I also don't know why we're using references for a Copy type. Maybe past me knows.
 impl Into<Image> for &Rectangle {
     #[inline(always)]
     fn into(self) -> Image {

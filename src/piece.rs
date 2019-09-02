@@ -155,7 +155,7 @@ impl Piece {
         chessboard: &Chessboard,
         end_pos: [u8; 2],
         check_check: bool,
-        promotion: Option<&Fn(PieceData) -> Piece>,
+        promotion: Option<&dyn Fn(PieceData) -> Piece>,
     ) -> MoveType {
         let original_move_type = match self {
             Piece::Bishop(data) => {
