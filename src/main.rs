@@ -13,15 +13,17 @@ mod chessboard;
 mod chessboard_controller;
 mod chessboard_view;
 mod piece;
+mod sidebar;
 
 use crate::chessboard::Chessboard;
 use crate::chessboard_controller::ChessboardController;
 use crate::chessboard_view::{ChessboardView, ChessboardViewSettings};
+use crate::sidebar::Sidebar;
 
 pub const BOARD_SIZE: u8 = 8;
 pub const BOARD_BORDER_SIZE: f64 = 5.0;
 pub const WIDTH: f64 = 600.0;
-pub const HEIGHT: f64 = 450.0 + 2.0*BOARD_BORDER_SIZE;
+pub const HEIGHT: f64 = 400.0 + 2.0*BOARD_BORDER_SIZE;
 
 
 fn main() {
@@ -43,6 +45,11 @@ fn main() {
     let mut controller = ChessboardController::new(chessboard);
     controller.init_piece_rects();
 
+    let sidebar_size = WIDTH - HEIGHT;
+    let sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
+
+    let mut cache = GlyphCache::new("fonts/Montserrat-Regular.ttf", (), TextureSettings::new()).unwrap();
+
     // Create a new game and run it.
     let mut gl = GlGraphics::new(opengl);
 
@@ -51,9 +58,16 @@ fn main() {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, gl| {
                 use graphics::clear;
+                use graphics::text;
+                use graphics::Transformed;
                 clear([0.0; 4], gl);
                 view.draw(&controller, &c, gl);
 
+                sidebar.draw(&c, gl);
+
+                let transform = c.transform.trans(WIDTH - sidebar_size + 10.0, 100.0);
+                text::Text::new(13)
+                    .draw("Hello world!", &mut cache, &c.draw_state, transform, gl).unwrap();
             });
         }
         controller.event(&e);
