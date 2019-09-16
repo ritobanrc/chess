@@ -207,6 +207,13 @@ impl Rectangle {
         x > self.x && y > self.y && x < self.x + self.w && y < self.y + self.h
     }
 
+    pub fn offset(&self, offset: [f64; 2]) -> Self {
+        let mut new = self.clone();
+        new.x += offset[0];
+        new.y += offset[1];
+        return new;
+    }
+
     pub fn update_center(&mut self, new_x: f64, new_y: f64) {
         self.x = new_x - self.w / 2.0;
         self.y = new_y - self.w / 2.0;
@@ -228,6 +235,26 @@ impl Rectangle {
     pub fn bottom(&self) -> f64 {
         self.y + self.h
     }
+
+    pub fn center_x(&self) -> f64 {
+        self.x + self.w/2.0
+    }
+
+
+    pub fn center_y(&self) -> f64 {
+        self.y + self.h/2.0
+    }
+
+    pub fn center(&self) -> [f64; 2] {
+        [self.center_x(), self.center_y()]
+    }
+}
+
+impl From<[f64; 4]> for Rectangle {
+    #[inline(always)]
+    fn from(v: [f64; 4]) -> Self {
+        Rectangle::new(v[0], v[1], v[2], v[3])
+    }
 }
 
 impl Into<[f64; 4]> for Rectangle {
@@ -236,6 +263,7 @@ impl Into<[f64; 4]> for Rectangle {
         [self.x, self.y, self.w, self.h]
     }
 }
+
 
 // TODO: I don't know if this makes any sort of sense
 // I also don't know why we're using references for a Copy type. Maybe past me knows.

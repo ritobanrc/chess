@@ -18,7 +18,7 @@ mod sidebar;
 use crate::chessboard::Chessboard;
 use crate::chessboard_controller::ChessboardController;
 use crate::chessboard_view::{ChessboardView, ChessboardViewSettings};
-use crate::sidebar::Sidebar;
+use crate::sidebar::{Sidebar, SidebarState};
 
 pub const BOARD_SIZE: u8 = 8;
 pub const BOARD_BORDER_SIZE: f64 = 5.0;
@@ -46,7 +46,9 @@ fn main() {
     controller.init_piece_rects();
 
     let sidebar_size = WIDTH - HEIGHT;
-    let sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
+    let mut sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
+    let mut sidebar_state = SidebarState { toggle: false };
+    sidebar.initialize(&mut sidebar_state);
 
     let mut cache = GlyphCache::new("fonts/RobotoMono-Thin.ttf",
                                     (),
@@ -67,5 +69,6 @@ fn main() {
             });
         }
         controller.event(&e);
+        sidebar.event(&e);
     }
 }
