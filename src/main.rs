@@ -46,8 +46,8 @@ fn main() {
     controller.init_piece_rects();
 
     let sidebar_size = WIDTH - HEIGHT;
-    let mut sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
     let mut sidebar_state = SidebarState { toggle: false };
+    let mut sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
     sidebar.initialize(&mut sidebar_state);
 
     let mut cache = GlyphCache::new("fonts/RobotoMono-Thin.ttf",

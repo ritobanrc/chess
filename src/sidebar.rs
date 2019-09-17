@@ -9,37 +9,41 @@ use crate::chessboard_controller::Rectangle;
 const TEXT_COLOR: [f32; 4] = [0.9, 0.9, 0.9, 1.0];
 
 
-pub struct Sidebar {
+pub struct Sidebar<'a> {
     rect: Rectangle,
-    buttons: Vec<Button>,
+    buttons: Vec<Button<'a>>,
 }
 
 pub struct SidebarState {
     pub toggle: bool,
 }
 
-impl Sidebar {
-    pub fn new(x: f64, y: f64, width: f64, height: f64) -> Sidebar {
+impl<'a> Sidebar<'a> {
+    pub fn new(x: f64, y: f64, width: f64, height: f64) -> Sidebar<'a> {
         Sidebar {
             rect: Rectangle::new(x, y, width, height),
             buttons: Vec::new(),
         }
     }
 
-    pub fn initialize(&mut self, sidebar_state: &mut SidebarState) { 
+    pub fn initialize(&mut self, sidebar_state: &'a mut SidebarState) { 
         let theme = ButtonTheme::default();
-        self.buttons.push(Button::new(Rectangle::from([100.0, 200.0, 50.0, 20.0]), theme,
-                          Box::new(|| {
-                              println!("button pressed");
+        let mut toggle1 = false;
+        let mut toggle2 = false;
+        self.buttons.push(Button::new(Rectangle::from([10.0, 50.0, 25.0, 25.0]), theme,
+                          move || {
+                              toggle1 = !toggle1;
+                              println!("button pressed {:?}", toggle1);
                               //sidebar_state.toggle = !sidebar_state.toggle;
                           }
-                          )));
-        self.buttons.push(Button::new(Rectangle::from([50.0, 50.0, 25.0, 25.0]), theme,
-                          Box::new(|| {
-                              println!("other button pressed");
+                          ));
+        self.buttons.push(Button::new(Rectangle::from([40.0, 50.0, 25.0, 25.0]), theme,
+                          move || {
+                              toggle2 = !toggle2;
+                              println!("other button pressed {:?}", toggle2);
                               //sidebar_state.toggle = !sidebar_state.toggle;
                           }
-                          )));
+                          ));
     }
 
     pub fn event<E: GenericEvent>(&mut self, e: &E) { 
@@ -117,23 +121,23 @@ impl ButtonTheme {
     }
 }
 
-struct Button { 
+struct Button<'a> { 
     rect: Rectangle,
     theme: ButtonTheme,
     //text: String,
     hover: bool,
     pressed: bool,
-    callback: Box<dyn FnMut() -> ()>
+    callback: Box<dyn 'a + FnMut()>
 }
 
-impl Button {
-    pub fn new(rect: Rectangle, theme: ButtonTheme, callback: Box<dyn FnMut() -> ()>) -> Self { 
+impl<'a> Button<'a> {
+    pub fn new<CB: 'a + FnMut()>(rect: Rectangle, theme: ButtonTheme, callback: CB) -> Self { 
         Button {
             rect,
             theme,
             hover: false,
             pressed: false,
-            callback: callback,
+            callback: Box::new(callback),
         }
     }
 
@@ -163,7 +167,6 @@ impl Button {
                 match button {
                     piston::Button::Mouse(piston::MouseButton::Left) => {
                         self.pressed = false;
-                        self.hover = false;
                         (self.callback)();
                     }
                     _ => { }
