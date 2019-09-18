@@ -227,6 +227,13 @@ impl Rectangle {
         self.y
     }
 
+    pub fn size_x(&self) -> f64 {
+        self.w
+    }
+
+    pub fn size_y(&self) -> f64 {
+        self.h
+    }
 
     pub fn right(&self) -> f64 {
         self.x + self.w

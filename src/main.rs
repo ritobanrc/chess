@@ -18,7 +18,7 @@ mod sidebar;
 use crate::chessboard::Chessboard;
 use crate::chessboard_controller::ChessboardController;
 use crate::chessboard_view::{ChessboardView, ChessboardViewSettings};
-use crate::sidebar::{Sidebar, SidebarState};
+use crate::sidebar::Sidebar;
 
 pub const BOARD_SIZE: u8 = 8;
 pub const BOARD_BORDER_SIZE: f64 = 5.0;
@@ -46,13 +46,13 @@ fn main() {
     controller.init_piece_rects();
 
     let sidebar_size = WIDTH - HEIGHT;
-    let mut sidebar_state = SidebarState { toggle: false };
+    //let mut sidebar_state = SidebarState { toggle: false };
     let mut sidebar = Sidebar::new(WIDTH - sidebar_size, 0.0, sidebar_size, HEIGHT);
-    sidebar.initialize(&mut sidebar_state);
+    //sidebar.initialize(&mut sidebar_state);
 
-    let mut cache = GlyphCache::new("fonts/RobotoMono-Thin.ttf",
+    let mut cache = GlyphCache::new("fonts/Everson Mono.ttf",
                                     (),
-                                    TextureSettings::new().filter(Filter::Linear))
+                                    TextureSettings::new().filter(Filter::Nearest))
         .unwrap();
 
     // Create a new game and run it.

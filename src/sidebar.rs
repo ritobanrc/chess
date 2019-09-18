@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use piston::input::GenericEvent;
 use graphics;
 use graphics::character::CharacterCache;
@@ -8,47 +9,56 @@ use crate::chessboard_controller::Rectangle;
 
 const TEXT_COLOR: [f32; 4] = [0.9, 0.9, 0.9, 1.0];
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ButtonIds {
+    Button1, Button2, Button3
+}
 
-pub struct Sidebar<'a> {
+pub struct Sidebar {
     rect: Rectangle,
-    buttons: Vec<Button<'a>>,
+    buttons: HashMap<ButtonIds, Button>,
+    toggle: bool,
 }
 
-pub struct SidebarState {
-    pub toggle: bool,
-}
-
-impl<'a> Sidebar<'a> {
-    pub fn new(x: f64, y: f64, width: f64, height: f64) -> Sidebar<'a> {
+impl Sidebar {
+    pub fn new(x: f64, y: f64, width: f64, height: f64) -> Sidebar {
+        let mut buttons = HashMap::new();
+        let theme = ButtonTheme::default();
+        buttons.insert(ButtonIds::Button1, Button::new(Rectangle::from([10.0, 50.0, 50.0, 50.0]), theme, "♙".to_string()));
+        buttons.insert(ButtonIds::Button2, Button::new(Rectangle::from([70.0, 50.0, 100.0, 100.0]), theme, "♛".to_string()));
         Sidebar {
             rect: Rectangle::new(x, y, width, height),
-            buttons: Vec::new(),
+            buttons: buttons,
+            toggle: false
         }
     }
 
-    pub fn initialize(&mut self, sidebar_state: &'a mut SidebarState) { 
-        let theme = ButtonTheme::default();
-        let mut toggle1 = false;
-        let mut toggle2 = false;
-        self.buttons.push(Button::new(Rectangle::from([10.0, 50.0, 25.0, 25.0]), theme,
-                          move || {
-                              toggle1 = !toggle1;
-                              println!("button pressed {:?}", toggle1);
-                              //sidebar_state.toggle = !sidebar_state.toggle;
-                          }
-                          ));
-        self.buttons.push(Button::new(Rectangle::from([40.0, 50.0, 25.0, 25.0]), theme,
-                          move || {
-                              toggle2 = !toggle2;
-                              println!("other button pressed {:?}", toggle2);
-                              //sidebar_state.toggle = !sidebar_state.toggle;
-                          }
-                          ));
-    }
-
     pub fn event<E: GenericEvent>(&mut self, e: &E) { 
-        for button in &mut self.buttons {
-            button.event(e, [self.rect.left(), self.rect.top()]);
+        let mut add_button = false;
+        let mut remove_button = false;
+        for (id, button) in &mut self.buttons {
+            let result = button.event(e, [self.rect.left(), self.rect.top()]);
+            if result == ButtonStatus::Clicked {
+                match id {
+                    ButtonIds::Button1 => {
+                        add_button = true;
+                    }
+                    ButtonIds::Button3 => {
+                        remove_button = true;
+                    }
+                    _ => { 
+                        self.toggle = !self.toggle;
+                        println!("Button 1 Pressed");
+                    }
+                }
+                println!("{}", self.toggle);
+            }
+        }
+        if add_button {
+            self.buttons.insert(ButtonIds::Button3, Button::new(Rectangle::from([20.0, 200.0, 25.0, 25.0]), ButtonTheme::default(), "f".to_string()));
+        }
+        if remove_button {
+            self.buttons.remove(&ButtonIds::Button3);
         }
     }
 
@@ -89,7 +99,7 @@ impl<'a> Sidebar<'a> {
             } else { eprintln!("Error rendering text") }
         }
 
-        for button in &self.buttons {
+        for (_, button) in &self.buttons {
             let transform = transform.trans(self.rect.left(), self.rect.top());
             button.draw(cache, draw_state, transform, g);
         }
@@ -121,27 +131,33 @@ impl ButtonTheme {
     }
 }
 
-struct Button<'a> { 
+struct Button { 
     rect: Rectangle,
     theme: ButtonTheme,
-    //text: String,
+    text: String,
     hover: bool,
     pressed: bool,
-    callback: Box<dyn 'a + FnMut()>
 }
 
-impl<'a> Button<'a> {
-    pub fn new<CB: 'a + FnMut()>(rect: Rectangle, theme: ButtonTheme, callback: CB) -> Self { 
+#[derive(PartialEq, Eq)]
+enum ButtonStatus {
+    Nothing, Clicked,
+}
+
+impl Button {
+    pub fn new(rect: Rectangle, theme: ButtonTheme, text: String) -> Self { 
         Button {
             rect,
             theme,
+            text,
             hover: false,
             pressed: false,
-            callback: Box::new(callback),
         }
     }
 
-    pub fn event<E: GenericEvent>(&mut self, e: &E, offset: [f64; 2]) { 
+    pub fn event<E: GenericEvent>(&mut self, e: &E, offset: [f64; 2]) -> ButtonStatus { 
+        let mut result = ButtonStatus::Nothing;
+
         e.mouse_cursor(|pos| {
             if self.rect.offset(offset).is_point_inside(pos[0], pos[1]) {
                 self.hover = true;
@@ -167,12 +183,15 @@ impl<'a> Button<'a> {
                 match button {
                     piston::Button::Mouse(piston::MouseButton::Left) => {
                         self.pressed = false;
-                        (self.callback)();
+                        result = ButtonStatus::Clicked;
+                        //(self.callback)();
                     }
                     _ => { }
                 }
             }
         });
+
+        result
     }
 
     pub fn draw<C, G>(&self,
@@ -192,5 +211,11 @@ impl<'a> Button<'a> {
             background_color = self.theme.hover_color;
         };
         Rectangle::new(background_color).draw(self.rect, draw_state, transform, g);
+
+        let transform = transform.trans(self.rect.center_x() - self.rect.size_x()/4.0,
+                                        self.rect.center_y() + self.rect.size_y()/3.0);
+        if let Ok(_) = Text::new_color(self.theme.text_color, (self.rect.size_y() - 5.0) as u32).
+            draw(&self.text[..], cache, draw_state, transform, g) {
+        } else { eprintln!("Error rendering text") }
     }
 }
