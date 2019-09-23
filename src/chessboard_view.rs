@@ -1,6 +1,6 @@
 use crate::piece::{Piece, Side};
 use crate::ChessboardController;
-use crate::{BOARD_SIZE, BOARD_BORDER_SIZE};
+use crate::{BOARD_BORDER_SIZE, BOARD_SIZE};
 use graphics;
 use graphics::types::Color;
 use opengl_graphics::{GlGraphics, Texture, TextureSettings};

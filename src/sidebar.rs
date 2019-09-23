@@ -1,113 +1,153 @@
-use std::collections::HashMap;
-use piston::input::GenericEvent;
 use graphics;
 use graphics::character::CharacterCache;
-use graphics::{Graphics, Transformed, DrawState};
 use graphics::math::Matrix2d;
+use graphics::{DrawState, Graphics, Transformed};
+use piston::input::GenericEvent;
+use std::collections::HashMap;
 
-use crate::chessboard_controller::Rectangle;
+use crate::chessboard_controller::{ChessboardController, Rectangle};
+use crate::piece::Piece;
 
 const TEXT_COLOR: [f32; 4] = [0.9, 0.9, 0.9, 1.0];
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ButtonIds {
-    Button1, Button2, Button3
+    RookButton,
+    BishopButton,
+    KnightButon,
+    QueenButton,
 }
 
 pub struct Sidebar {
     rect: Rectangle,
     buttons: HashMap<ButtonIds, Button>,
-    toggle: bool,
 }
 
 impl Sidebar {
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Sidebar {
-        let mut buttons = HashMap::new();
-        let theme = ButtonTheme::default();
-        buttons.insert(ButtonIds::Button1, Button::new(Rectangle::from([10.0, 50.0, 50.0, 50.0]), theme, "♙".to_string()));
-        buttons.insert(ButtonIds::Button2, Button::new(Rectangle::from([70.0, 50.0, 100.0, 100.0]), theme, "♛".to_string()));
+        let buttons = HashMap::new();
         Sidebar {
             rect: Rectangle::new(x, y, width, height),
-            buttons: buttons,
-            toggle: false
+            buttons,
         }
     }
 
-    pub fn event<E: GenericEvent>(&mut self, e: &E) { 
-        let mut add_button = false;
-        let mut remove_button = false;
+    pub fn add_pawn_buttons(&mut self) {
+        let theme = ButtonTheme::default();
+        self.buttons.insert(
+            ButtonIds::RookButton,
+            Button::new(
+                Rectangle::from([10.0, 50.0, 75.0, 75.0]),
+                theme,
+                "♜".to_string(),
+            ),
+        );
+        self.buttons.insert(
+            ButtonIds::BishopButton,
+            Button::new(
+                Rectangle::from([100.0, 50.0, 75.0, 75.0]),
+                theme,
+                "♝".to_string(),
+            ),
+        );
+        self.buttons.insert(
+            ButtonIds::KnightButon,
+            Button::new(
+                Rectangle::from([10.0, 150.0, 75.0, 75.0]),
+                theme,
+                "♞".to_string(),
+            ),
+        );
+        self.buttons.insert(
+            ButtonIds::QueenButton,
+            Button::new(
+                Rectangle::from([100.0, 150.0, 75.0, 75.0]),
+                theme,
+                "♛".to_string(),
+            ),
+        );
+    }
+
+    pub fn event<E: GenericEvent>(
+        &mut self,
+        e: &E,
+        chessboard_controller: &mut ChessboardController,
+    ) {
+        //let mut add_button = false;
+        let mut remove_pawn_buttons = false;
         for (id, button) in &mut self.buttons {
             let result = button.event(e, [self.rect.left(), self.rect.top()]);
             if result == ButtonStatus::Clicked {
                 match id {
-                    ButtonIds::Button1 => {
-                        add_button = true;
+                    ButtonIds::QueenButton => {
+                        chessboard_controller.trigger_pawn_promotion(&Piece::Queen);
+                        remove_pawn_buttons = true;
                     }
-                    ButtonIds::Button3 => {
-                        remove_button = true;
+                    ButtonIds::KnightButon => {
+                        chessboard_controller.trigger_pawn_promotion(&Piece::Knight);
+                        remove_pawn_buttons = true;
                     }
-                    _ => { 
-                        self.toggle = !self.toggle;
-                        println!("Button 1 Pressed");
+                    ButtonIds::BishopButton => {
+                        chessboard_controller.trigger_pawn_promotion(&Piece::Bishop);
+                        remove_pawn_buttons = true;
+                    }
+                    ButtonIds::RookButton => {
+                        chessboard_controller.trigger_pawn_promotion(&Piece::Rook);
+                        remove_pawn_buttons = true;
                     }
                 }
-                println!("{}", self.toggle);
             }
         }
-        if add_button {
-            self.buttons.insert(ButtonIds::Button3, Button::new(Rectangle::from([20.0, 200.0, 25.0, 25.0]), ButtonTheme::default(), "f".to_string()));
-        }
-        if remove_button {
-            self.buttons.remove(&ButtonIds::Button3);
+        if remove_pawn_buttons {
+            self.buttons.remove(&ButtonIds::QueenButton);
+            self.buttons.remove(&ButtonIds::KnightButon);
+            self.buttons.remove(&ButtonIds::BishopButton);
+            self.buttons.remove(&ButtonIds::RookButton);
         }
     }
 
-
-    pub fn draw<C, G>(&self,
-                      cache: &mut C,
-                      draw_state: &DrawState,
-                      transform: Matrix2d,
-                      g: &mut G)
-            where C: CharacterCache,
-                  G: Graphics<Texture = <C as CharacterCache>::Texture>
+    pub fn draw<C, G>(&self, cache: &mut C, draw_state: &DrawState, transform: Matrix2d, g: &mut G)
+    where
+        C: CharacterCache,
+        G: Graphics<Texture = <C as CharacterCache>::Texture>,
     {
         use graphics::{Rectangle, Text};
 
         // Background
         let rect: [f64; 4] = self.rect.into();
-        Rectangle::new([0.2, 0.2, 0.2, 1.0]).draw(
-            rect,
-            draw_state,
-            transform,
-            g
-        );
+        Rectangle::new([0.2, 0.2, 0.2, 1.0]).draw(rect, draw_state, transform, g);
 
-
-        { // Player 1 Text
-            let transform = transform.trans(self.rect.left() + 10.0, 
-                                            self.rect.top() + 10.0 + 20.0);
-            if let Ok(_) = Text::new_color(TEXT_COLOR, 20).
-                draw("Player 1", cache, draw_state, transform, g) {
-            } else { eprintln!("Error rendering text") }
+        {
+            // Player 1 Text
+            let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + 10.0 + 20.0);
+            if Text::new_color(TEXT_COLOR, 20)
+                .draw("Player 1", cache, draw_state, transform, g)
+                .is_err()
+            {
+                eprintln!("Error rendering text")
+            }
         }
 
-        { // Player 2 Text
-            let transform = transform.trans(self.rect.left() + 10.0, 
-                                            self.rect.bottom() - 10.0);
-            if let Ok(_) = Text::new_color(TEXT_COLOR, 20).
-                draw("Player 2", cache, draw_state, transform, g) {
-            } else { eprintln!("Error rendering text") }
+        {
+            // Player 2 Text
+            let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 10.0);
+            if Text::new_color(TEXT_COLOR, 20)
+                .draw("Player 2", cache, draw_state, transform, g)
+                .is_err()
+            {
+                eprintln!("Error rendering text")
+            }
         }
 
-        for (_, button) in &self.buttons {
+        for button in self.buttons.values() {
             let transform = transform.trans(self.rect.left(), self.rect.top());
             button.draw(cache, draw_state, transform, g);
         }
 
         //{ // Rectangle
-            //let transform = transform.trans(self.rect.center_x(), 
-                                            //self.rect.center_y());
-            //Rectangle::new([0.2, 0.2, 0.8, 1.0]).draw([10.0, 10.0, 50.0, 20.0], draw_state, transform, g);
+        //let transform = transform.trans(self.rect.center_x(),
+        //self.rect.center_y());
+        //Rectangle::new([0.2, 0.2, 0.8, 1.0]).draw([10.0, 10.0, 50.0, 20.0], draw_state, transform, g);
         //}
     }
 }
@@ -131,7 +171,7 @@ impl ButtonTheme {
     }
 }
 
-struct Button { 
+struct Button {
     rect: Rectangle,
     theme: ButtonTheme,
     text: String,
@@ -141,11 +181,12 @@ struct Button {
 
 #[derive(PartialEq, Eq)]
 enum ButtonStatus {
-    Nothing, Clicked,
+    Nothing,
+    Clicked,
 }
 
 impl Button {
-    pub fn new(rect: Rectangle, theme: ButtonTheme, text: String) -> Self { 
+    pub fn new(rect: Rectangle, theme: ButtonTheme, text: String) -> Self {
         Button {
             rect,
             theme,
@@ -155,7 +196,7 @@ impl Button {
         }
     }
 
-    pub fn event<E: GenericEvent>(&mut self, e: &E, offset: [f64; 2]) -> ButtonStatus { 
+    pub fn event<E: GenericEvent>(&mut self, e: &E, offset: [f64; 2]) -> ButtonStatus {
         let mut result = ButtonStatus::Nothing;
 
         e.mouse_cursor(|pos| {
@@ -169,24 +210,17 @@ impl Button {
 
         e.press(|button| {
             if self.hover {
-                match button {
-                    piston::Button::Mouse(piston::MouseButton::Left) => {
-                        self.pressed = true;
-                    }
-                    _ => { }
+                if let piston::Button::Mouse(piston::MouseButton::Left) = button {
+                    self.pressed = true;
                 }
             }
         });
 
         e.release(|button| {
             if self.hover && self.pressed {
-                match button {
-                    piston::Button::Mouse(piston::MouseButton::Left) => {
-                        self.pressed = false;
-                        result = ButtonStatus::Clicked;
-                        //(self.callback)();
-                    }
-                    _ => { }
+                if let piston::Button::Mouse(piston::MouseButton::Left) = button {
+                    self.pressed = false;
+                    result = ButtonStatus::Clicked;
                 }
             }
         });
@@ -194,28 +228,29 @@ impl Button {
         result
     }
 
-    pub fn draw<C, G>(&self,
-                      cache: &mut C,
-                      draw_state: &DrawState,
-                      transform: Matrix2d,
-                      g: &mut G)
-            where C: CharacterCache,
-                  G: Graphics<Texture = <C as CharacterCache>::Texture>
+    pub fn draw<C, G>(&self, cache: &mut C, draw_state: &DrawState, transform: Matrix2d, g: &mut G)
+    where
+        C: CharacterCache,
+        G: Graphics<Texture = <C as CharacterCache>::Texture>,
     {
         use graphics::{Rectangle, Text};
         let mut background_color = self.theme.base_color;
         if self.pressed {
             background_color = self.theme.pressed_color;
-        }
-        else if self.hover {
+        } else if self.hover {
             background_color = self.theme.hover_color;
         };
         Rectangle::new(background_color).draw(self.rect, draw_state, transform, g);
 
-        let transform = transform.trans(self.rect.center_x() - self.rect.size_x()/4.0,
-                                        self.rect.center_y() + self.rect.size_y()/3.0);
-        if let Ok(_) = Text::new_color(self.theme.text_color, (self.rect.size_y() - 5.0) as u32).
-            draw(&self.text[..], cache, draw_state, transform, g) {
-        } else { eprintln!("Error rendering text") }
+        let transform = transform.trans(
+            self.rect.center_x() - self.rect.size_x() / 2.0,
+            self.rect.center_y() + self.rect.size_y() / 2.0,
+        );
+        if Text::new_color(self.theme.text_color, (self.rect.size_y() * 0.9) as u32)
+            .draw(&self.text[..], cache, draw_state, transform, g)
+            .is_err()
+        {
+            eprintln!("Error rendering text")
+        }
     }
 }

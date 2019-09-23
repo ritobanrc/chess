@@ -1,6 +1,7 @@
 use crate::chessboard::{Chessboard, MoveResult};
-use crate::piece::{Piece, Side, PieceData};
-use crate::{BOARD_SIZE, WIDTH, HEIGHT, BOARD_BORDER_SIZE};
+use crate::piece::{Piece, PieceData};
+use crate::sidebar::Sidebar;
+use crate::{BOARD_BORDER_SIZE, BOARD_SIZE, HEIGHT};
 use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
@@ -17,7 +18,14 @@ pub struct ChessboardController {
     pub size: f64,
     pub piece_rects: Vec<PieceRect>,
     drag_controller: DragController,
-    selected: Option<usize>, // This is a terrible hack, but there isn't any other way to have a reference into piece_rects
+    // This is a terrible hack,
+    // but there isn't any other way to have a reference into piece_rects,
+    // and I can't be bothered to refactor everything
+    selected: Option<usize>,
+    // currently, this is only used in pawn promotion,
+    // the move isn't triggered immediately after the drag stops
+    // therefore, a lot of stuff is hardcoded based on this value
+    pawn_promotion_move: Option<[u8; 2]>,
     chessboard: Chessboard,
 }
 
@@ -26,10 +34,11 @@ impl ChessboardController {
         let piece_rects = Vec::new();
         ChessboardController {
             position: [BOARD_BORDER_SIZE; 2],
-            size: HEIGHT - 2.0*BOARD_BORDER_SIZE,
+            size: HEIGHT - 2.0 * BOARD_BORDER_SIZE,
             piece_rects,
             drag_controller: DragController::new(),
             selected: None,
+            pawn_promotion_move: None,
             chessboard,
         }
     }
@@ -64,13 +73,16 @@ impl ChessboardController {
         self.size / f64::from(BOARD_SIZE)
     }
 
-    fn try_move(&mut self,
-                idx: usize,
-                pos: [u8; 2],
-                promotion: Option<&dyn Fn(PieceData) -> Piece>) {
+    fn try_move(
+        &mut self,
+        idx: usize,
+        pos: [u8; 2],
+        promotion: Option<&dyn Fn(PieceData) -> Piece>,
+    ) {
         // get the chessboard, tell it to try the move.
-        let move_result =
-            self.chessboard.try_move(&self.piece_rects[idx].piece, pos, promotion);
+        let move_result = self
+            .chessboard
+            .try_move(&self.piece_rects[idx].piece, pos, promotion);
 
         // In the event that some idiot (cough..me..cough) made it so the
         // chessboard pieces aren't directly linked to the piece rect pieces,
@@ -78,25 +90,22 @@ impl ChessboardController {
         match move_result {
             MoveResult::Invalid => {
                 // it it's invalid, set the position equal to wherever it is.
-                self.piece_rects[idx].rect = self.get_square_rect(
-                    self.piece_rects[idx].piece.get_data().position,
-                    );
+                self.piece_rects[idx].rect =
+                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
             }
             MoveResult::Regular(p) | MoveResult::PawnPromotion(p) => {
                 // it it's a regular position, update both the rect and the piece
                 self.piece_rects[idx].piece = p.clone();
-                self.piece_rects[idx].rect = self.get_square_rect(
-                    self.piece_rects[idx].piece.get_data().position,
-                    );
+                self.piece_rects[idx].rect =
+                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
             }
             MoveResult::Capture { moved, captured }
             | MoveResult::EnPassant { moved, captured }
             | MoveResult::PawnPromotionCapture { moved, captured } => {
                 // start by updating the moved piece
                 self.piece_rects[idx].piece = moved.clone();
-                self.piece_rects[idx].rect = self.get_square_rect(
-                    self.piece_rects[idx].piece.get_data().position,
-                    );
+                self.piece_rects[idx].rect =
+                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
                 // now remove the captured piece
                 let pos = self
                     .piece_rects
@@ -113,24 +122,22 @@ impl ChessboardController {
                 // it it's a regular position, update both the rect and the piece
                 self.piece_rects[idx].piece = king.clone();
                 let rook = rook.clone();
-                self.piece_rects[idx].rect = self.get_square_rect(
-                    self.piece_rects[idx].piece.get_data().position,
-                    );
+                self.piece_rects[idx].rect =
+                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
                 let pos = self
                     .piece_rects
                     .iter()
                     .position(|x| x.piece.get_data().position == rook_init_pos)
                     .unwrap();
                 self.piece_rects[pos].piece = rook;
-                self.piece_rects[pos].rect = self.get_square_rect(
-                    self.piece_rects[pos].piece.get_data().position,
-                    );
+                self.piece_rects[pos].rect =
+                    self.get_square_rect(self.piece_rects[pos].piece.get_data().position);
             }
         };
     }
 
     /// Handle events to the chessboard (piece dragging)
-    pub fn event<E: GenericEvent>(&mut self, e: &E) {
+    pub fn event<E: GenericEvent>(&mut self, e: &E, sidebar: &mut Sidebar) {
         let drag_controller = &mut self.drag_controller;
         let piece_rects = &self.piece_rects;
         let mut selected: Option<usize> = self.selected;
@@ -174,18 +181,34 @@ impl ChessboardController {
                             BOARD_SIZE - ((y - self.position[0]) / self.square_size()).ceil() as u8,
                         ];
 
-                        if let Piece::Pawn(_data) = &self.piece_rects[idx].piece {
-                            // TODO: figure out what to promote to
-                            self.try_move(idx, pos, Some(&Piece::Queen));
+                        let piece = &self.piece_rects[idx].piece;
+
+                        if let Piece::Pawn(_data) = piece {
+                            if pos[1] == piece.get_data().side.other().get_back_rank() {
+                                sidebar.add_pawn_buttons();
+                                self.pawn_promotion_move = Some(pos);
+                            } else {
+                                // i don't like that there's code dupication here
+                                self.try_move(idx, pos, None);
+                                self.selected = None; // drag over, no longer selected
+                            }
                         } else {
                             self.try_move(idx, pos, None);
+                            self.selected = None; // drag over, no longer selected
                         }
-                        //println!("Black King in Check: {:?}", self.chessboard.is_in_check(Side::Dark));
-                        self.selected = None; // drag over, no longer selected
                     }
                 }
             };
         }
+    }
+
+    pub fn trigger_pawn_promotion(&mut self, promotion: &dyn Fn(PieceData) -> Piece) {
+        self.try_move(
+            self.selected.unwrap(),
+            self.pawn_promotion_move.unwrap(),
+            Some(promotion),
+        );
+        self.selected = None;
     }
 }
 
@@ -207,11 +230,10 @@ impl Rectangle {
         x > self.x && y > self.y && x < self.x + self.w && y < self.y + self.h
     }
 
-    pub fn offset(&self, offset: [f64; 2]) -> Self {
-        let mut new = self.clone();
-        new.x += offset[0];
-        new.y += offset[1];
-        return new;
+    pub fn offset(mut self, offset: [f64; 2]) -> Rectangle {
+        self.x += offset[0];
+        self.y += offset[1];
+        self
     }
 
     pub fn update_center(&mut self, new_x: f64, new_y: f64) {
@@ -244,12 +266,11 @@ impl Rectangle {
     }
 
     pub fn center_x(&self) -> f64 {
-        self.x + self.w/2.0
+        self.x + self.w / 2.0
     }
 
-
     pub fn center_y(&self) -> f64 {
-        self.y + self.h/2.0
+        self.y + self.h / 2.0
     }
 
     pub fn center(&self) -> [f64; 2] {
@@ -270,7 +291,6 @@ impl Into<[f64; 4]> for Rectangle {
         [self.x, self.y, self.w, self.h]
     }
 }
-
 
 // TODO: I don't know if this makes any sort of sense
 // I also don't know why we're using references for a Copy type. Maybe past me knows.

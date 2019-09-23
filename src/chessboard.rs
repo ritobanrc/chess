@@ -133,10 +133,10 @@ impl CastleRights {
             )),
             CastleRights::KingSide => chessboard
                 .get_piece_at(self.get_rook_init_pos(side)?)
-                .ok_or(String::from("Kingside rook not found")),
+                .ok_or_else(|| String::from("Kingside rook not found")),
             CastleRights::QueenSide => chessboard
                 .get_piece_at(self.get_rook_init_pos(side)?)
-                .ok_or(String::from("Queenside rook not found")),
+                .ok_or_else(|| String::from("Queenside rook not found")),
         }
     }
 }
@@ -367,7 +367,9 @@ impl Chessboard {
 
             MoveType::PawnPromotion => {
                 if let Piece::Pawn(data) = piece {
-                    piece = promotion.expect("Chessboard::apply_move -- pawn promotion Fn is none")(data);
+                    piece = promotion.expect("Chessboard::apply_move -- pawn promotion Fn is none")(
+                        data,
+                    );
                 }
                 piece.get_data_mut().position = end_pos;
                 self.en_passant = None;
@@ -377,7 +379,9 @@ impl Chessboard {
 
             MoveType::PawnPromotionCapture => {
                 if let Piece::Pawn(data) = piece {
-                    piece = promotion.expect("Chessboard::apply_move -- pawn promotion Fn is none")(data);
+                    piece = promotion.expect("Chessboard::apply_move -- pawn promotion Fn is none")(
+                        data,
+                    );
                 }
                 piece.get_data_mut().position = end_pos;
                 let captured = self.insert(end_pos, piece).unwrap();
@@ -429,14 +433,14 @@ impl Chessboard {
                 | Piece::Bishop(_data)
                 | Piece::Queen(_data)
                 | Piece::King(_data) => {
-                    // NOTE: If you must promote, "promote" to a pawn. 
+                    // NOTE: If you must promote, "promote" to a pawn.
                     // This refers to where the pawn directly threatens the
-                    // king. 
+                    // king.
                     // Therefore, what it promotes to doesn't matter.
                     // To emphasize this, we "promote" to a pawn.
-                    let move_type = piece.can_move(self, king.get_data().position, false, Some(&Piece::Pawn));
-                    if let MoveType::Capture | MoveType::PawnPromotionCapture = move_type
-                    {
+                    let move_type =
+                        piece.can_move(self, king.get_data().position, false, Some(&Piece::Pawn));
+                    if let MoveType::Capture | MoveType::PawnPromotionCapture = move_type {
                         return true;
                     }
                 }
