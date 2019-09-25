@@ -68,7 +68,7 @@ impl PartialEq for Piece {
     }
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum MoveType {
     Invalid,
     Regular,
@@ -329,6 +329,7 @@ impl Piece {
             let mut temp_board = chessboard.clone();
             temp_board.apply_move(self.clone(), original_move_type, end_pos, promotion);
             if temp_board.is_side_in_check(self.get_data().side) {
+                println!("Check for check failed");
                 MoveType::Invalid
             } else {
                 original_move_type

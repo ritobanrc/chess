@@ -8,8 +8,6 @@ use std::collections::HashMap;
 use crate::chessboard_controller::{ChessboardController, Rectangle};
 use crate::piece::Piece;
 
-const TEXT_COLOR: [f32; 4] = [0.9, 0.9, 0.9, 1.0];
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ButtonIds {
     RookButton,
@@ -112,6 +110,8 @@ impl Sidebar {
         G: Graphics<Texture = <C as CharacterCache>::Texture>,
     {
         use graphics::{Rectangle, Text};
+
+        const TEXT_COLOR: [f32; 4] = [0.9, 0.9, 0.9, 1.0];
 
         // Background
         let rect: [f64; 4] = self.rect.into();
@@ -240,12 +240,13 @@ impl Button {
         } else if self.hover {
             background_color = self.theme.hover_color;
         };
-        Rectangle::new(background_color).draw(self.rect, draw_state, transform, g);
+        Rectangle::new_round(background_color, 5.0).draw(self.rect, draw_state, transform, g);
 
         let transform = transform.trans(
             self.rect.center_x() - self.rect.size_x() / 2.0,
             self.rect.center_y() + self.rect.size_y() / 2.0,
         );
+
         if Text::new_color(self.theme.text_color, (self.rect.size_y() * 0.9) as u32)
             .draw(&self.text[..], cache, draw_state, transform, g)
             .is_err()

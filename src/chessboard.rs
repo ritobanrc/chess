@@ -34,6 +34,7 @@ pub enum CastleRights {
     Both,
 }
 
+
 impl CastleRights {
     /// Returns NoRights if the castle is invalid,
     /// or KingSide or Queenside if if the castle is valid.
@@ -145,6 +146,7 @@ impl CastleRights {
 pub struct Chessboard {
     pub pieces: HashMap<[u8; 2], Piece>,
     pub en_passant: Option<[u8; 2]>,
+    pub turn: Side,
     light_castle: CastleRights,
     dark_castle: CastleRights,
 }
@@ -171,6 +173,7 @@ impl Chessboard {
         Chessboard {
             pieces: HashMap::new(),
             en_passant: None,
+            turn: Side::Light,
             light_castle: CastleRights::Both,
             dark_castle: CastleRights::Both,
         }
@@ -207,6 +210,7 @@ impl Chessboard {
         Chessboard {
             pieces,
             en_passant: None,
+            turn: Side::Light,
             light_castle: CastleRights::Both,
             dark_castle: CastleRights::Both,
         }
@@ -256,6 +260,31 @@ impl Chessboard {
         }
     }
 
+    pub fn is_checkmated(&self, side: Side) -> bool {
+        println!("{:?}", side);
+        for piece in self.pieces.values() {
+            if piece.get_data().side != side {
+                continue;
+            }
+            for i in 0..8 {
+                for j in 0..8 {
+                    // I'm making the assumption that it doesn't matter what you promote to.
+                    // If you're going to get out of check by pawn promotion, you're either
+                    //     - capturing the checking piece
+                    //     - blocking
+                    //  In either scenario, it doesn't matter what you promote to
+                    if piece.can_move(self, [i, j], true, Some(&Piece::Queen)) != MoveType::Invalid {
+                        println!("{:?} to {:?} is {:?}", piece, [i, j], piece.can_move(self, [i, j], true, Some(&Piece::Queen)));
+                        return false;
+                    }
+                }
+            }
+        }
+        println!("Side in check: {:?}", self.is_side_in_check(side));
+        true
+        //return Checkmate::Checkmate;
+    }
+
     pub fn apply_move(
         &mut self,
         mut piece: Piece,
@@ -266,7 +295,6 @@ impl Chessboard {
         match move_type {
             MoveType::Invalid => {
                 self.insert(piece.get_data().position, piece);
-                self.en_passant = None;
                 MoveResult::Invalid
             }
 
@@ -290,6 +318,7 @@ impl Chessboard {
                 piece.get_data_mut().position = end_pos;
                 let captured = self.insert(end_pos, piece).unwrap();
                 self.en_passant = None;
+                self.turn = self.turn.other();
                 MoveResult::Capture {
                     moved: self.get_piece_at(end_pos).unwrap(),
                     captured,
@@ -315,6 +344,7 @@ impl Chessboard {
                 };
                 piece.get_data_mut().position = end_pos;
                 self.en_passant = None;
+                self.turn = self.turn.other();
                 self.insert(end_pos, piece);
                 MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
             }
@@ -322,6 +352,7 @@ impl Chessboard {
             MoveType::Doublestep => {
                 piece.get_data_mut().position = end_pos;
                 self.en_passant = Some(piece.get_data().position);
+                self.turn = self.turn.other();
                 self.insert(end_pos, piece);
                 MoveResult::Regular(self.get_piece_at(end_pos).unwrap())
             }
@@ -331,6 +362,7 @@ impl Chessboard {
                 self.insert(end_pos, piece); // this should not return anything
                 let captured = self.pieces.remove(&self.en_passant.unwrap()).unwrap();
                 self.en_passant = None;
+                self.turn = self.turn.other();
                 MoveResult::EnPassant {
                     moved: self.get_piece_at(end_pos).unwrap(),
                     captured,
@@ -357,6 +389,7 @@ impl Chessboard {
                 self.remove_all_castle_rights(piece.get_data().side);
                 self.insert(rook_end_pos, rook);
                 self.insert(end_pos, piece);
+                self.turn = self.turn.other();
                 MoveResult::Castle {
                     king: self.get_piece_at(end_pos).unwrap(),
                     rook: self.get_piece_at(rook_end_pos).unwrap(),
@@ -374,6 +407,7 @@ impl Chessboard {
                 piece.get_data_mut().position = end_pos;
                 self.en_passant = None;
                 self.insert(end_pos, piece);
+                self.turn = self.turn.other();
                 MoveResult::PawnPromotion(self.get_piece_at(end_pos).unwrap())
             }
 
@@ -386,6 +420,7 @@ impl Chessboard {
                 piece.get_data_mut().position = end_pos;
                 let captured = self.insert(end_pos, piece).unwrap();
                 self.en_passant = None;
+                self.turn = self.turn.other();
                 MoveResult::PawnPromotionCapture {
                     moved: self.get_piece_at(end_pos).unwrap(),
                     captured,
@@ -403,10 +438,15 @@ impl Chessboard {
         // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
         let piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
 
-        let move_type = piece.can_move(self, end_pos, true, promotion);
+        let move_type;
+        // if it's not your turn, it doesn't matter, it's already invalid.
+        if piece.get_data().side != self.turn {
+            move_type = MoveType::Invalid;
+        } else {
+            move_type = piece.can_move(self, end_pos, true, promotion);
+        }
 
         self.apply_move(piece, move_type, end_pos, promotion)
-        //piece.try_move(self, end_pos)
     }
 
     pub fn get_king(&self, side: Side) -> Option<&Piece> {
