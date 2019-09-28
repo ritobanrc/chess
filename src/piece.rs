@@ -260,7 +260,8 @@ impl Piece {
                     } else {
                         MoveType::Regular
                     }
-                } else { // castling
+                } else {
+                    // castling
                     // Check for castling. From wikipedia, the following
                     // conditions are necessary.
                     //The king and the chosen rook are on the player's first rank.[3]

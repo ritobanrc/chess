@@ -34,7 +34,6 @@ pub enum CastleRights {
     Both,
 }
 
-
 impl CastleRights {
     /// Returns NoRights if the castle is invalid,
     /// or KingSide or Queenside if if the castle is valid.
@@ -123,23 +122,6 @@ impl CastleRights {
             Err("Rook not where expected.")
         }
     }
-
-    /// Returns the rook for this castle. Will return error if NoRights or Both.
-    /// Should be used in conjunction with check_end_pos.
-    pub fn get_rook(self, chessboard: &Chessboard, side: Side) -> Result<&Piece, String> {
-        match self {
-            CastleRights::NoRights | CastleRights::Both => Err(format!(
-                "CastleRights::get_rook -- {:?} is not a valid input.",
-                self
-            )),
-            CastleRights::KingSide => chessboard
-                .get_piece_at(self.get_rook_init_pos(side)?)
-                .ok_or_else(|| String::from("Kingside rook not found")),
-            CastleRights::QueenSide => chessboard
-                .get_piece_at(self.get_rook_init_pos(side)?)
-                .ok_or_else(|| String::from("Queenside rook not found")),
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -168,20 +150,13 @@ fn str_to_pos(s: &str) -> [u8; 2] {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Checkmate { Nothing, Checkmate, Stalemate }
+pub enum Checkmate {
+    Nothing,
+    Checkmate,
+    Stalemate,
+}
 
 impl Chessboard {
-    /// Creates an empty chessboard with no pieces on it.
-    pub fn empty() -> Chessboard {
-        Chessboard {
-            pieces: HashMap::new(),
-            en_passant: None,
-            turn: Side::Light,
-            light_castle: CastleRights::Both,
-            dark_castle: CastleRights::Both,
-        }
-    }
-
     /// Creates a new chessboard with the standard arrangement of pieces
     pub fn standard() -> Chessboard {
         let mut pieces = HashMap::new();
@@ -285,9 +260,9 @@ impl Chessboard {
             }
         }
         if self.is_side_in_check(side) {
-            return Checkmate::Checkmate;
+            Checkmate::Checkmate
         } else {
-            return Checkmate::Stalemate
+            Checkmate::Stalemate
         }
     }
 

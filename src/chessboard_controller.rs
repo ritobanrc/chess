@@ -6,7 +6,6 @@ use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
 
-
 pub struct PieceRect {
     pub piece: Piece,
     pub rect: Rectangle,
@@ -80,7 +79,7 @@ impl ChessboardController {
         pos: [u8; 2],
         promotion: Option<&dyn Fn(PieceData) -> Piece>,
     ) {
-        let side = &self.piece_rects[idx].piece.get_data().side.clone();
+        let side = self.piece_rects[idx].piece.get_data().side;
         // get the chessboard, tell it to try the move.
         let move_result = self
             .chessboard
@@ -136,7 +135,10 @@ impl ChessboardController {
                     self.get_square_rect(self.piece_rects[pos].piece.get_data().position);
             }
         };
-        println!("Checkmate result: {:?}", self.chessboard.is_checkmated(side.other()));
+        println!(
+            "Checkmate result: {:?}",
+            self.chessboard.is_checkmated(side.other())
+        );
     }
 
     /// Handle events to the chessboard (piece dragging)
@@ -153,7 +155,9 @@ impl ChessboardController {
             if let Drag::Start(x, y) = drag {
                 //println!("Start {}{}", x, y);
                 for (i, piece_rect) in piece_rects.iter().enumerate() {
-                    if piece_rect.piece.get_data().side == *turn && piece_rect.rect.is_point_inside(x, y) {
+                    if piece_rect.piece.get_data().side == *turn
+                        && piece_rect.rect.is_point_inside(x, y)
+                    {
                         selected = Some(i);
                         return true;
                     }
@@ -191,7 +195,9 @@ impl ChessboardController {
                         }
 
                         match piece {
-                            Piece::Pawn(_data) if pos[1] == piece.get_data().side.other().get_back_rank() => {
+                            Piece::Pawn(_data)
+                                if pos[1] == piece.get_data().side.other().get_back_rank() =>
+                            {
                                 sidebar.add_pawn_buttons();
                                 self.pawn_promotion_move = Some(pos);
                             }
