@@ -260,7 +260,7 @@ impl Piece {
                     } else {
                         MoveType::Regular
                     }
-                } else {
+                } else { // castling
                     // Check for castling. From wikipedia, the following
                     // conditions are necessary.
                     //The king and the chosen rook are on the player's first rank.[3]
@@ -328,8 +328,9 @@ impl Piece {
             // is in check
             let mut temp_board = chessboard.clone();
             temp_board.apply_move(self.clone(), original_move_type, end_pos, promotion);
+            //println!("{:?} is king in temp_board after {:?} to {:?}", temp_board.get_king(self.get_data().side), self, end_pos);
             if temp_board.is_side_in_check(self.get_data().side) {
-                println!("Check for check failed");
+                //println!("Check for check failed");
                 MoveType::Invalid
             } else {
                 original_move_type

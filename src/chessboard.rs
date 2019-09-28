@@ -167,6 +167,9 @@ fn str_to_pos(s: &str) -> [u8; 2] {
     [s[0] - b'A', s[1] - b'1']
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Checkmate { Nothing, Checkmate, Stalemate }
+
 impl Chessboard {
     /// Creates an empty chessboard with no pieces on it.
     pub fn empty() -> Chessboard {
@@ -260,8 +263,8 @@ impl Chessboard {
         }
     }
 
-    pub fn is_checkmated(&self, side: Side) -> bool {
-        println!("{:?}", side);
+    pub fn is_checkmated(&self, side: Side) -> Checkmate {
+        //println!("{:?}", side);
         for piece in self.pieces.values() {
             if piece.get_data().side != side {
                 continue;
@@ -273,16 +276,19 @@ impl Chessboard {
                     //     - capturing the checking piece
                     //     - blocking
                     //  In either scenario, it doesn't matter what you promote to
-                    if piece.can_move(self, [i, j], true, Some(&Piece::Queen)) != MoveType::Invalid {
-                        println!("{:?} to {:?} is {:?}", piece, [i, j], piece.can_move(self, [i, j], true, Some(&Piece::Queen)));
-                        return false;
+                    let move_type = piece.can_move(self, [i, j], true, Some(&Piece::Queen));
+                    if move_type != MoveType::Invalid {
+                        //println!("{:?} to {:?} is {:?}", piece, [i, j], move_type);
+                        return Checkmate::Nothing;
                     }
                 }
             }
         }
-        println!("Side in check: {:?}", self.is_side_in_check(side));
-        true
-        //return Checkmate::Checkmate;
+        if self.is_side_in_check(side) {
+            return Checkmate::Checkmate;
+        } else {
+            return Checkmate::Stalemate
+        }
     }
 
     pub fn apply_move(
@@ -292,6 +298,10 @@ impl Chessboard {
         end_pos: [u8; 2],
         promotion: Option<&dyn Fn(PieceData) -> Piece>,
     ) -> MoveResult {
+        // this function used to work on the assumption that the piece was removed from the pieces
+        // map, and that this function's responsibility was to add it back in. However, when we are
+        // looking at checkmate, that's not the case. So, enter, this ugly hack
+        self.pieces.remove(&piece.get_data().position); // if this is None, that means it was already handled. Otherwise, rmeove it.
         match move_type {
             MoveType::Invalid => {
                 self.insert(piece.get_data().position, piece);
@@ -438,13 +448,12 @@ impl Chessboard {
         // get the copy in the hashset. We can't be certain that piece_ref references the hashset.
         let piece = self.pieces.remove(&piece_ref.get_data().position).unwrap();
 
-        let move_type;
-        // if it's not your turn, it doesn't matter, it's already invalid.
-        if piece.get_data().side != self.turn {
-            move_type = MoveType::Invalid;
+        let move_type = if piece.get_data().side != self.turn {
+            // if it's not your turn, it doesn't matter, it's already invalid.
+            MoveType::Invalid
         } else {
-            move_type = piece.can_move(self, end_pos, true, promotion);
-        }
+            piece.can_move(self, end_pos, true, promotion)
+        };
 
         self.apply_move(piece, move_type, end_pos, promotion)
     }

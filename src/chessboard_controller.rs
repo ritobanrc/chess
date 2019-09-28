@@ -186,6 +186,9 @@ impl ChessboardController {
                         ];
 
                         let piece = &self.piece_rects[idx].piece;
+                        if pos == piece.get_data().position {
+                            return;
+                        }
 
                         match piece {
                             Piece::Pawn(_data) if pos[1] == piece.get_data().side.other().get_back_rank() => {
