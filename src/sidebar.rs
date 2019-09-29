@@ -6,7 +6,7 @@ use piston::input::GenericEvent;
 use std::collections::HashMap;
 
 use crate::chessboard_controller::{ChessboardController, Rectangle};
-use crate::piece::Piece;
+use crate::piece::{Piece, Side};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ButtonIds {
@@ -35,7 +35,7 @@ impl Sidebar {
         self.buttons.insert(
             ButtonIds::RookButton,
             Button::new(
-                Rectangle::from([10.0, 50.0, 75.0, 75.0]),
+                Rectangle::from([10.0, 100.0, 75.0, 75.0]),
                 theme,
                 "♜".to_string(),
             ),
@@ -43,7 +43,7 @@ impl Sidebar {
         self.buttons.insert(
             ButtonIds::BishopButton,
             Button::new(
-                Rectangle::from([100.0, 50.0, 75.0, 75.0]),
+                Rectangle::from([100.0, 100.0, 75.0, 75.0]),
                 theme,
                 "♝".to_string(),
             ),
@@ -51,7 +51,7 @@ impl Sidebar {
         self.buttons.insert(
             ButtonIds::KnightButon,
             Button::new(
-                Rectangle::from([10.0, 150.0, 75.0, 75.0]),
+                Rectangle::from([10.0, 200.0, 75.0, 75.0]),
                 theme,
                 "♞".to_string(),
             ),
@@ -59,7 +59,7 @@ impl Sidebar {
         self.buttons.insert(
             ButtonIds::QueenButton,
             Button::new(
-                Rectangle::from([100.0, 150.0, 75.0, 75.0]),
+                Rectangle::from([100.0, 200.0, 75.0, 75.0]),
                 theme,
                 "♛".to_string(),
             ),
@@ -104,7 +104,7 @@ impl Sidebar {
         }
     }
 
-    pub fn draw<C, G>(&self, cache: &mut C, draw_state: &DrawState, transform: Matrix2d, g: &mut G)
+    pub fn draw<C, G>(&self, cache: &mut C, draw_state: &DrawState, transform: Matrix2d, g: &mut G, controller: &ChessboardController)
     where
         C: CharacterCache,
         G: Graphics<Texture = <C as CharacterCache>::Texture>,
@@ -118,10 +118,10 @@ impl Sidebar {
         Rectangle::new([0.2, 0.2, 0.2, 1.0]).draw(rect, draw_state, transform, g);
 
         {
-            // Player 1 Text
+            // Player 2 Text
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + 10.0 + 20.0);
             if Text::new_color(TEXT_COLOR, 20)
-                .draw("Player 1", cache, draw_state, transform, g)
+                .draw("Black", cache, draw_state, transform, g)
                 .is_err()
             {
                 eprintln!("Error rendering text")
@@ -129,10 +129,34 @@ impl Sidebar {
         }
 
         {
-            // Player 2 Text
+            // Player 1 Text
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 10.0);
             if Text::new_color(TEXT_COLOR, 20)
-                .draw("Player 2", cache, draw_state, transform, g)
+                .draw("White", cache, draw_state, transform, g)
+                .is_err()
+            {
+                eprintln!("Error rendering text")
+            }
+        }
+
+        {
+            // Player 2 Captured Pieces
+            let size = 15;
+            let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + f64::from(size) + 40.0);
+            if Text::new_color(TEXT_COLOR, size)
+                .draw(&controller.get_captures_for_side(Side::Dark).display(), cache, draw_state, transform, g)
+                .is_err()
+            {
+                eprintln!("Error rendering text")
+            }
+        }
+
+        {
+            // Player 1 Captured Pieces
+            let size = 15;
+            let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 40.0);
+            if Text::new_color(TEXT_COLOR, size)
+                .draw(&controller.get_captures_for_side(Side::Light).display(), cache, draw_state, transform, g)
                 .is_err()
             {
                 eprintln!("Error rendering text")

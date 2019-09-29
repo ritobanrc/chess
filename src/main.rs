@@ -67,7 +67,7 @@ fn main() {
                 use graphics::clear;
                 clear([0.0; 4], gl);
                 view.draw(&controller, &c, gl);
-                sidebar.draw(&mut cache, &c.draw_state, c.transform, gl);
+                sidebar.draw(&mut cache, &c.draw_state, c.transform, gl, &controller);
             });
         }
     }

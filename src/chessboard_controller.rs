@@ -1,15 +1,79 @@
 use crate::chessboard::{Chessboard, MoveResult};
-use crate::piece::{Piece, PieceData};
+use crate::piece::{Piece, PieceData, Side};
 use crate::sidebar::Sidebar;
 use crate::{BOARD_BORDER_SIZE, BOARD_SIZE, HEIGHT};
 use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
+use std::fmt::Write;
 
 pub struct PieceRect {
     pub piece: Piece,
     pub rect: Rectangle,
 }
+
+pub struct CaptureCount {
+    queen_count: u8,
+    rook_count: u8,
+    bishop_count: u8,
+    knight_count: u8,
+    pawn_count: u8,
+}
+
+impl CaptureCount {
+    pub fn new() -> CaptureCount {
+        CaptureCount {
+            queen_count: 0,
+            rook_count: 0,
+            bishop_count: 0,
+            knight_count: 0,
+            pawn_count: 0,
+        }
+    }
+
+    pub fn add_piece(&mut self, piece: &Piece) {
+        match piece {
+            Piece::Queen(_) => {
+                self.queen_count += 1;
+            },
+            Piece::Rook(_) => {
+                self.rook_count += 1;
+            },
+            Piece::Bishop(_) => {
+                self.bishop_count += 1;
+            },
+            Piece::Knight(_) => {
+                self.knight_count += 1;
+            },
+            Piece::Pawn(_) => {
+                self.pawn_count += 1;
+            },
+            Piece::King(_) => panic!("We captured a king!"),
+        }
+    }
+
+    pub fn display(&self) -> String {
+        let mut result = String::new();
+        if self.queen_count > 0 {
+            write!(&mut result, "{} ♛  ", self.queen_count).unwrap();
+        }
+        if self.rook_count > 0 {
+            write!(&mut result, "{} ♜  ", self.rook_count).unwrap();
+        }
+        if self.bishop_count > 0 {
+            write!(&mut result, "{} ♝  ", self.bishop_count).unwrap();
+        }
+        if self.knight_count > 0 {
+            write!(&mut result, "{} ♞  ", self.knight_count).unwrap();
+        }
+        if self.pawn_count > 0 {
+            write!(&mut result, "{} ♟  ", self.pawn_count).unwrap();
+        }
+
+        result
+    }
+}
+
 
 pub struct ChessboardController {
     /// Position from left-top corner.
@@ -24,8 +88,9 @@ pub struct ChessboardController {
     selected: Option<usize>,
     // currently, this is only used in pawn promotion,
     // the move isn't triggered immediately after the drag stops
-    // therefore, a lot of stuff is hardcoded based on this value
     pawn_promotion_move: Option<[u8; 2]>,
+    light_capture: CaptureCount,
+    dark_capture: CaptureCount,
     chessboard: Chessboard,
 }
 
@@ -39,6 +104,8 @@ impl ChessboardController {
             drag_controller: DragController::new(),
             selected: None,
             pawn_promotion_move: None,
+            light_capture: CaptureCount::new(),
+            dark_capture: CaptureCount::new(),
             chessboard,
         }
     }
@@ -71,6 +138,22 @@ impl ChessboardController {
     #[inline(always)]
     pub fn square_size(&self) -> f64 {
         self.size / f64::from(BOARD_SIZE)
+    }
+
+    #[inline(always)]
+    pub fn get_captures_for_side(&self, side: Side) -> &CaptureCount {
+        match side {
+            Side::Light => &self.light_capture,
+            Side::Dark => &self.dark_capture,
+        }
+    }
+
+    #[inline(always)]
+    pub fn get_mut_captures_for_side(&mut self, side: Side) -> &mut CaptureCount {
+        match side {
+            Side::Light => &mut self.light_capture,
+            Side::Dark => &mut self.dark_capture,
+        }
     }
 
     fn try_move(
@@ -107,6 +190,8 @@ impl ChessboardController {
                 self.piece_rects[idx].piece = moved.clone();
                 self.piece_rects[idx].rect =
                     self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                // add it to captured list
+                self.get_mut_captures_for_side(captured.get_data().side).add_piece(&captured);
                 // now remove the captured piece
                 let pos = self
                     .piece_rects

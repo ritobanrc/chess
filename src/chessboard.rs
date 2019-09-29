@@ -433,6 +433,8 @@ impl Chessboard {
         self.apply_move(piece, move_type, end_pos, promotion)
     }
 
+    /// This iterates through the entire HashMap to find the king.
+    /// There must be a better way
     pub fn get_king(&self, side: Side) -> Option<&Piece> {
         for (_pos, piece) in self.pieces.iter() {
             if let Piece::King(data) = piece {
@@ -482,12 +484,6 @@ impl Chessboard {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_empty_chessboard() {
-        let chessboard = Chessboard::empty();
-        assert_eq!(chessboard.get_piece_at([0, 0]), None);
-    }
 
     #[test]
     fn test_piece_creation() {
