@@ -1,4 +1,4 @@
-use crate::chessboard::{Chessboard, MoveResult};
+use crate::chessboard::{Chessboard, MoveResult, Checkmate};
 use crate::piece::{Piece, PieceData, Side};
 use crate::sidebar::Sidebar;
 use crate::{BOARD_BORDER_SIZE, BOARD_SIZE, HEIGHT};
@@ -91,6 +91,10 @@ pub struct ChessboardController {
     pawn_promotion_move: Option<[u8; 2]>,
     light_capture: CaptureCount,
     dark_capture: CaptureCount,
+    // logically, it's not possible for both of these to be true at the same time
+    light_check: bool,
+    dark_check: bool,
+    pub game_result: (Checkmate, Side),
     chessboard: Chessboard,
 }
 
@@ -106,6 +110,11 @@ impl ChessboardController {
             pawn_promotion_move: None,
             light_capture: CaptureCount::new(),
             dark_capture: CaptureCount::new(),
+            light_check: false,
+            dark_check: false,
+            // while I could go to the effort of making this an Option<Side>, I don't think it's
+            // worth it
+            game_result: (Checkmate::Nothing, Side::Light),
             chessboard,
         }
     }
@@ -145,6 +154,14 @@ impl ChessboardController {
         match side {
             Side::Light => &self.light_capture,
             Side::Dark => &self.dark_capture,
+        }
+    }
+
+    #[inline(always)]
+    pub fn get_check_for_side(&self, side: Side) -> bool {
+        match side {
+            Side::Light => self.light_check,
+            Side::Dark => self.dark_check,
         }
     }
 
@@ -220,10 +237,27 @@ impl ChessboardController {
                     self.get_square_rect(self.piece_rects[pos].piece.get_data().position);
             }
         };
-        println!(
-            "Checkmate result: {:?}",
-            self.chessboard.is_checkmated(side.other())
-        );
+        self.game_result = (self.chessboard.is_checkmated(side.other()), side);
+        match self.game_result.0 {
+            Checkmate::Checkmate => {
+                println!("Game Over! {:?} wins", self.game_result.1);
+                return;
+            },
+            Checkmate::Stalemate => {
+                println!("Game Over! Draw");
+                return;
+            }
+            _ => { }
+        }
+
+        self.light_check = self.chessboard.is_side_in_check(Side::Light);
+        self.dark_check = self.chessboard.is_side_in_check(Side::Dark);
+        if self.light_check {
+            println!("White in Check");
+        }
+        if self.dark_check {
+            println!("Black in Check");
+        }
     }
 
     /// Handle events to the chessboard (piece dragging)
@@ -276,6 +310,8 @@ impl ChessboardController {
 
                         let piece = &self.piece_rects[idx].piece;
                         if pos == piece.get_data().position {
+                            self.piece_rects[idx].rect =
+                                self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
                             return;
                         }
 
