@@ -122,47 +122,35 @@ impl Sidebar {
             // Black Text
             let size = 20;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + 10.0 + f64::from(size));
-            if Text::new_color(TEXT_COLOR, size)
+            Text::new_color(TEXT_COLOR, size)
                 .draw("Black", cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
         {
             // White Text
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 10.0);
-            if Text::new_color(TEXT_COLOR, 20)
+            Text::new_color(TEXT_COLOR, 20)
                 .draw("White", cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
         {
             // Black Captured Pieces
             let size = 15;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + f64::from(size) + 40.0);
-            if Text::new_color(TEXT_COLOR, size)
+            Text::new_color(TEXT_COLOR, size)
                 .draw(&controller.get_captures_for_side(Side::Dark).display(), cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
         {
             // White Captured Pieces
             let size = 15;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 40.0);
-            if Text::new_color(TEXT_COLOR, size)
+            Text::new_color(TEXT_COLOR, size)
                 .draw(&controller.get_captures_for_side(Side::Light).display(), cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
         // Black Check/Checkmate
@@ -170,20 +158,14 @@ impl Sidebar {
         // loser
         if controller.game_result.0 == Checkmate::Checkmate && controller.game_result.1 == Side::Light {
             let transform = transform.trans(self.rect.center_x() - 7.0, self.rect.top() + 10.0 + 20.0);
-            if Text::new_color(TEXT_COLOR, 15)
+            Text::new_color(TEXT_COLOR, 15)
                 .draw("Checkmate", cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         } else if controller.get_check_for_side(Side::Dark) {
             let transform = transform.trans(self.rect.center_x(), self.rect.top() + 10.0 + 20.0);
-            if Text::new_color(TEXT_COLOR, 15)
+            Text::new_color(TEXT_COLOR, 15)
                 .draw("Check", cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
 
@@ -192,20 +174,14 @@ impl Sidebar {
         // loser
         if controller.game_result.0 == Checkmate::Checkmate && controller.game_result.1 == Side::Dark {
             let transform = transform.trans(self.rect.center_x() - 7.0, self.rect.bottom() - 10.0);
-            if Text::new_color(TEXT_COLOR, 15)
+            Text::new_color(TEXT_COLOR, 15)
                 .draw("Checkmate", cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         } else if controller.get_check_for_side(Side::Light) {
             let transform = transform.trans(self.rect.center_x(), self.rect.bottom() - 10.0);
-            if Text::new_color(TEXT_COLOR, 15)
+            Text::new_color(TEXT_COLOR, 15)
                 .draw("Check", cache, draw_state, transform, g)
-                .is_err()
-            {
-                eprintln!("Error rendering text")
-            }
+                .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
         match controller.game_result {
@@ -213,61 +189,43 @@ impl Sidebar {
             (Checkmate::Checkmate, Side::Light) => {
                 {
                     let transform = transform.trans(self.rect.center_x() - 80.0, self.rect.center_y() - 20.0);
-                    if Text::new_color(TEXT_COLOR, 20)
+                    Text::new_color(TEXT_COLOR, 20)
                         .draw("GAME OVER!", cache, draw_state, transform, g)
-                        .is_err()
-                    {
-                        eprintln!("Error rendering text")
-                    }
+                        .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
                 {
                     let transform = transform.trans(self.rect.center_x() - 60.0, self.rect.center_y() + 20.0);
-                    if Text::new_color(TEXT_COLOR, 15)
+                    Text::new_color(TEXT_COLOR, 15)
                         .draw("WHITE WINS", cache, draw_state, transform, g)
-                        .is_err()
-                    {
-                        eprintln!("Error rendering text")
-                    }
+                        .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
             },
             (Checkmate::Checkmate, Side::Dark) => {
                 {
                     let transform = transform.trans(self.rect.center_x() - 80.0, self.rect.center_y() - 20.0);
-                    if Text::new_color(TEXT_COLOR, 20)
+                    Text::new_color(TEXT_COLOR, 20)
                         .draw("GAME OVER!", cache, draw_state, transform, g)
-                        .is_err()
-                    {
-                        eprintln!("Error rendering text")
-                    }
+                        .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
                 {
                     let transform = transform.trans(self.rect.center_x() - 60.0, self.rect.center_y() + 20.0);
-                    if Text::new_color(TEXT_COLOR, 15)
+                    Text::new_color(TEXT_COLOR, 15)
                         .draw("BLACK WINS", cache, draw_state, transform, g)
-                        .is_err()
-                    {
-                        eprintln!("Error rendering text")
-                    }
+                        .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
             },
             (Checkmate::Stalemate, _) => {
                 {
                     let transform = transform.trans(self.rect.center_x() - 80.0, self.rect.center_y());
-                    if Text::new_color(TEXT_COLOR, 15)
+                    Text::new_color(TEXT_COLOR, 15)
                         .draw("GAME OVER!", cache, draw_state, transform, g)
-                        .is_err()
-                    {
-                        eprintln!("Error rendering text")
-                    }
+                        .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
                 {
                     let transform = transform.trans(self.rect.center_x() - 30.0, self.rect.center_y() + 20.0);
-                    if Text::new_color(TEXT_COLOR, 15)
+                    Text::new_color(TEXT_COLOR, 15)
                         .draw("DRAW", cache, draw_state, transform, g)
-                        .is_err()
-                    {
-                        eprintln!("Error rendering text")
-                    }
+                        .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
             }
         }
@@ -381,11 +339,8 @@ impl Button {
             self.rect.center_y() + self.rect.size_y() / 2.0,
         );
 
-        if Text::new_color(self.theme.text_color, (self.rect.size_y() * 0.9) as u32)
+        Text::new_color(self.theme.text_color, (self.rect.size_y() * 0.9) as u32)
             .draw(&self.text[..], cache, draw_state, transform, g)
-            .is_err()
-        {
-            eprintln!("Error rendering text")
-        }
+            .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
     }
 }

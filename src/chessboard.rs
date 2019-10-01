@@ -436,14 +436,12 @@ impl Chessboard {
     /// This iterates through the entire HashMap to find the king.
     /// There must be a better way
     pub fn get_king(&self, side: Side) -> Option<&Piece> {
-        for (_pos, piece) in self.pieces.iter() {
-            if let Piece::King(data) = piece {
-                if data.side == side {
-                    return Some(piece);
-                }
+        self.pieces.values().filter(|piece|
+            match piece {
+                Piece::King(data) if data.side == side => true,
+                _ => false
             }
-        }
-        None
+        ).next()
     }
 
     pub fn is_king_in_check(&self, king: &Piece) -> bool {
@@ -479,29 +477,4 @@ impl Chessboard {
         let king = self.get_king(side).unwrap();
         self.is_king_in_check(king)
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_piece_creation() {
-        let mut chessboard = Chessboard::empty();
-        create_piece(
-            &mut chessboard.pieces,
-            str_to_pos("e5"),
-            Side::Light,
-            &Piece::Rook,
-        );
-        assert_eq!(
-            chessboard.get_piece_at([4, 4]).unwrap(),
-            &Piece::Rook(PieceData {
-                position: [4, 4],
-                side: Side::Light
-            })
-        );
-        assert_eq!(chessboard.get_piece_at([5, 5]), None);
-    }
-
 }
