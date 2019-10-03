@@ -281,9 +281,17 @@ impl Piece {
 
                     let rook = castle_type.get_rook_init_pos(data.side).unwrap();
                     //There are no pieces between the king and the chosen rook.
-                    for x in data.position[0]..rook[0] {
-                        if let Some(_p) = chessboard.get_piece_at([x, data.side.get_back_rank()]) {
-                            return MoveType::Invalid;
+                    if castle_type == CastleRights::KingSide {
+                        for x in data.position[0] + 1..rook[0] {
+                            if let Some(_p) = chessboard.get_piece_at([x, data.side.get_back_rank()]) {
+                                return MoveType::Invalid;
+                            }
+                        }
+                    } else {
+                        for x in rook[0] + 1..data.position[0] {
+                            if let Some(_p) = chessboard.get_piece_at([x, data.side.get_back_rank()]) {
+                                return MoveType::Invalid;
+                            }
                         }
                     }
 

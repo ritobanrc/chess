@@ -144,12 +144,16 @@ impl ChessboardViewSettings {
         );
         ChessboardViewSettings {
             light_square_color: [0.961, 0.961, 0.863, 1.0],
-            dark_square_color: [0.565, 0.702, 0.427, 1.0],
+            dark_square_color: rgb_to_decimal(125, 171, 219),
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
             board_edge_size: BOARD_BORDER_SIZE,
             textures,
         }
     }
+}
+
+pub fn rgb_to_decimal(r: u8, g: u8, b: u8) -> [f32; 4] {
+    [f32::from(r)/255.0, f32::from(g)/255.0, f32::from(b)/255.0, 1.0]
 }
 
 pub struct ChessboardView {

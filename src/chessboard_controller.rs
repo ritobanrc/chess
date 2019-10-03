@@ -23,11 +23,11 @@ pub struct CaptureCount {
 impl CaptureCount {
     pub fn new() -> CaptureCount {
         CaptureCount {
-            queen_count: 0,
-            rook_count: 0,
+            queen_count:  0,
+            rook_count:   0,
             bishop_count: 0,
             knight_count: 0,
-            pawn_count: 0,
+            pawn_count:   0,
         }
     }
 
@@ -144,6 +144,10 @@ impl ChessboardController {
         )
     }
 
+    pub fn get_turn(&self) -> Side {
+        self.chessboard.turn
+    }
+
     #[inline(always)]
     pub fn square_size(&self) -> f64 {
         self.size / f64::from(BOARD_SIZE)
@@ -257,6 +261,13 @@ impl ChessboardController {
         }
         if self.dark_check {
             println!("Black in Check");
+        }
+
+        if self.chessboard.turn == Side::Dark {
+            let moves = self.chessboard.get_possible_moves(side.other());
+            let pos = moves[0].1;
+            let idx = self.piece_rects.iter().position(|piece_rect| &piece_rect.piece == moves[0].0).unwrap();
+            self.try_move(idx, pos, Some(&Piece::Queen));
         }
     }
 

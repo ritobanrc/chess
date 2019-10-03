@@ -110,13 +110,23 @@ impl Sidebar {
         C: CharacterCache,
         G: Graphics<Texture = <C as CharacterCache>::Texture>,
     {
-        use graphics::{Rectangle, Text};
+        use graphics::{Rectangle, Text, Ellipse};
 
         const TEXT_COLOR: [f32; 4] = [0.9, 0.9, 0.9, 1.0];
+
 
         // Background
         let rect: [f64; 4] = self.rect.into();
         Rectangle::new([0.2, 0.2, 0.2, 1.0]).draw(rect, draw_state, transform, g);
+
+        { // turn display
+            let y = match controller.get_turn() {
+                Side::Dark => self.rect.top() + 20.0,
+                Side::Light => self.rect.bottom() - 20.0,
+            };
+            let transform = transform.trans(self.rect.left() + 3.0, y);
+            Ellipse::new([0.1, 0.5, 0.1, 1.0]).draw([0.0, 0.0, 5.0, 5.0], draw_state, transform, g);
+        }
 
         {
             // Black Text
@@ -137,7 +147,7 @@ impl Sidebar {
 
         {
             // Black Captured Pieces
-            let size = 15;
+            let size = 13;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + f64::from(size) + 40.0);
             Text::new_color(TEXT_COLOR, size)
                 .draw(&controller.get_captures_for_side(Side::Dark).display(), cache, draw_state, transform, g)
@@ -146,7 +156,7 @@ impl Sidebar {
 
         {
             // White Captured Pieces
-            let size = 15;
+            let size = 13;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 40.0);
             Text::new_color(TEXT_COLOR, size)
                 .draw(&controller.get_captures_for_side(Side::Light).display(), cache, draw_state, transform, g)
@@ -157,13 +167,13 @@ impl Sidebar {
         // Note that the game_result stores the winner, but we want to display "Checkmate" on the
         // loser
         if controller.game_result.0 == Checkmate::Checkmate && controller.game_result.1 == Side::Light {
-            let transform = transform.trans(self.rect.center_x() - 7.0, self.rect.top() + 10.0 + 20.0);
-            Text::new_color(TEXT_COLOR, 15)
+            let transform = transform.trans(self.rect.center_x(), self.rect.top() + 10.0 + 20.0);
+            Text::new_color(TEXT_COLOR, 12)
                 .draw("Checkmate", cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         } else if controller.get_check_for_side(Side::Dark) {
             let transform = transform.trans(self.rect.center_x(), self.rect.top() + 10.0 + 20.0);
-            Text::new_color(TEXT_COLOR, 15)
+            Text::new_color(TEXT_COLOR, 12)
                 .draw("Check", cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
@@ -173,13 +183,13 @@ impl Sidebar {
         // Note that the game_result stores the winner, but we want to display "Checkmate" on the
         // loser
         if controller.game_result.0 == Checkmate::Checkmate && controller.game_result.1 == Side::Dark {
-            let transform = transform.trans(self.rect.center_x() - 7.0, self.rect.bottom() - 10.0);
-            Text::new_color(TEXT_COLOR, 15)
+            let transform = transform.trans(self.rect.center_x(), self.rect.bottom() - 10.0);
+            Text::new_color(TEXT_COLOR, 12)
                 .draw("Checkmate", cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         } else if controller.get_check_for_side(Side::Light) {
             let transform = transform.trans(self.rect.center_x(), self.rect.bottom() - 10.0);
-            Text::new_color(TEXT_COLOR, 15)
+            Text::new_color(TEXT_COLOR, 12)
                 .draw("Check", cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
@@ -217,7 +227,7 @@ impl Sidebar {
             (Checkmate::Stalemate, _) => {
                 {
                     let transform = transform.trans(self.rect.center_x() - 80.0, self.rect.center_y());
-                    Text::new_color(TEXT_COLOR, 15)
+                    Text::new_color(TEXT_COLOR, 20)
                         .draw("GAME OVER!", cache, draw_state, transform, g)
                         .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
                 }
@@ -229,7 +239,6 @@ impl Sidebar {
                 }
             }
         }
-
 
         for button in self.buttons.values() {
             let transform = transform.trans(self.rect.left(), self.rect.top());

@@ -436,12 +436,32 @@ impl Chessboard {
     /// This iterates through the entire HashMap to find the king.
     /// There must be a better way
     pub fn get_king(&self, side: Side) -> Option<&Piece> {
-        self.pieces.values().filter(|piece|
+        self.pieces.values().find(|piece|
             match piece {
                 Piece::King(data) if data.side == side => true,
                 _ => false
             }
-        ).next()
+        )
+    }
+
+    pub fn get_possible_moves(&self, side: Side) -> Vec<(&Piece, [u8; 2])> {
+        let mut moves = Vec::new();
+
+        for piece in self.pieces.values() {
+            if piece.get_data().side != side {
+                continue
+            }
+            for i in 0..8 {
+                for j in 0..8 {
+                    let move_type = piece.can_move(self, [i, j], true, Some(&Piece::Queen));
+                    if move_type != MoveType::Invalid {
+                        moves.push((piece, [i, j]));
+                    }
+                }
+            }
+        }
+
+        moves
     }
 
     pub fn is_king_in_check(&self, king: &Piece) -> bool {
