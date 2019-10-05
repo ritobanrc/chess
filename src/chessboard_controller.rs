@@ -1,3 +1,4 @@
+use crate::ai;
 use crate::chessboard::{Chessboard, MoveResult, Checkmate};
 use crate::piece::{Piece, PieceData, Side};
 use crate::sidebar::Sidebar;
@@ -120,21 +121,21 @@ impl ChessboardController {
     }
 
     pub fn init_piece_rects(&mut self) {
-        for piece in self.chessboard.get_pieces().values() {
+        for piece in self.chessboard.pieces().values() {
             self.piece_rects.push(PieceRect {
                 piece: piece.clone(),
-                rect: self.get_piece_rect(piece),
+                rect: self.piece_rect(piece),
                 //rect: Rectangle::new(1.0, 1.0, 1.0, 1.0)
             });
         }
     }
 
     #[inline(always)]
-    pub fn get_piece_rect(&self, piece: &Piece) -> Rectangle {
-        self.get_square_rect(piece.get_data().position)
+    pub fn piece_rect(&self, piece: &Piece) -> Rectangle {
+        self.square_rect(piece.data().position)
     }
 
-    pub fn get_square_rect(&self, pos: [u8; 2]) -> Rectangle {
+    pub fn square_rect(&self, pos: [u8; 2]) -> Rectangle {
         let square_size = self.square_size();
         Rectangle::new(
             self.position[0] + f64::from(pos[0]) * square_size,
@@ -144,7 +145,7 @@ impl ChessboardController {
         )
     }
 
-    pub fn get_turn(&self) -> Side {
+    pub fn turn(&self) -> Side {
         self.chessboard.turn
     }
 
@@ -154,7 +155,7 @@ impl ChessboardController {
     }
 
     #[inline(always)]
-    pub fn get_captures_for_side(&self, side: Side) -> &CaptureCount {
+    pub fn captures(&self, side: Side) -> &CaptureCount {
         match side {
             Side::Light => &self.light_capture,
             Side::Dark => &self.dark_capture,
@@ -162,7 +163,7 @@ impl ChessboardController {
     }
 
     #[inline(always)]
-    pub fn get_check_for_side(&self, side: Side) -> bool {
+    pub fn check(&self, side: Side) -> bool {
         match side {
             Side::Light => self.light_check,
             Side::Dark => self.dark_check,
@@ -170,7 +171,7 @@ impl ChessboardController {
     }
 
     #[inline(always)]
-    pub fn get_mut_captures_for_side(&mut self, side: Side) -> &mut CaptureCount {
+    pub fn captures_mut(&mut self, side: Side) -> &mut CaptureCount {
         match side {
             Side::Light => &mut self.light_capture,
             Side::Dark => &mut self.dark_capture,
@@ -183,7 +184,7 @@ impl ChessboardController {
         pos: [u8; 2],
         promotion: Option<&dyn Fn(PieceData) -> Piece>,
     ) {
-        let side = self.piece_rects[idx].piece.get_data().side;
+        let side = self.piece_rects[idx].piece.data().side;
         // get the chessboard, tell it to try the move.
         let move_result = self
             .chessboard
@@ -196,13 +197,13 @@ impl ChessboardController {
             MoveResult::Invalid => {
                 // it it's invalid, set the position equal to wherever it is.
                 self.piece_rects[idx].rect =
-                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                    self.square_rect(self.piece_rects[idx].piece.data().position);
             }
             MoveResult::Regular(p) | MoveResult::PawnPromotion(p) => {
                 // it it's a regular position, update both the rect and the piece
                 self.piece_rects[idx].piece = p.clone();
                 self.piece_rects[idx].rect =
-                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                    self.square_rect(self.piece_rects[idx].piece.data().position);
             }
             MoveResult::Capture { moved, captured }
             | MoveResult::EnPassant { moved, captured }
@@ -210,9 +211,9 @@ impl ChessboardController {
                 // start by updating the moved piece
                 self.piece_rects[idx].piece = moved.clone();
                 self.piece_rects[idx].rect =
-                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                    self.square_rect(self.piece_rects[idx].piece.data().position);
                 // add it to captured list
-                self.get_mut_captures_for_side(captured.get_data().side).add_piece(&captured);
+                self.captures_mut(captured.data().side).add_piece(&captured);
                 // now remove the captured piece
                 let pos = self
                     .piece_rects
@@ -230,15 +231,15 @@ impl ChessboardController {
                 self.piece_rects[idx].piece = king.clone();
                 let rook = rook.clone();
                 self.piece_rects[idx].rect =
-                    self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                    self.square_rect(self.piece_rects[idx].piece.data().position);
                 let pos = self
                     .piece_rects
                     .iter()
-                    .position(|x| x.piece.get_data().position == rook_init_pos)
+                    .position(|x| x.piece.data().position == rook_init_pos)
                     .unwrap();
                 self.piece_rects[pos].piece = rook;
                 self.piece_rects[pos].rect =
-                    self.get_square_rect(self.piece_rects[pos].piece.get_data().position);
+                    self.square_rect(self.piece_rects[pos].piece.data().position);
             }
         };
         self.game_result = (self.chessboard.is_checkmated(side.other()), side);
@@ -264,11 +265,19 @@ impl ChessboardController {
         }
 
         if self.chessboard.turn == Side::Dark {
-            let moves = self.chessboard.get_possible_moves(side.other());
-            let pos = moves[0].1;
-            let idx = self.piece_rects.iter().position(|piece_rect| &piece_rect.piece == moves[0].0).unwrap();
-            self.try_move(idx, pos, Some(&Piece::Queen));
+            //thread::sleep(time::Duration::new(2, 0));
+            //let (tx, rx) = mpsc::channel();
+
+            //let best_move = rx.recv().unwrap();
+            let best_move = ai::get_best_move(&self.chessboard);
+            let piece = self.piece_idx_in_piece_rects(best_move.0);
+            let pos = best_move.1;
+            self.try_move(piece, pos, Some(&Piece::Queen));
         }
+    }
+
+    fn piece_idx_in_piece_rects(&self, piece: &Piece) -> usize {
+        self.piece_rects.iter().position(|piece_rect| &piece_rect.piece == piece).unwrap()
     }
 
     /// Handle events to the chessboard (piece dragging)
@@ -285,7 +294,7 @@ impl ChessboardController {
             if let Drag::Start(x, y) = drag {
                 //println!("Start {}{}", x, y);
                 for (i, piece_rect) in piece_rects.iter().enumerate() {
-                    if piece_rect.piece.get_data().side == *turn
+                    if piece_rect.piece.data().side == *turn
                         && piece_rect.rect.is_point_inside(x, y)
                     {
                         selected = Some(i);
@@ -320,15 +329,15 @@ impl ChessboardController {
                         ];
 
                         let piece = &self.piece_rects[idx].piece;
-                        if pos == piece.get_data().position {
+                        if pos == piece.data().position {
                             self.piece_rects[idx].rect =
-                                self.get_square_rect(self.piece_rects[idx].piece.get_data().position);
+                                self.square_rect(self.piece_rects[idx].piece.data().position);
                             return;
                         }
 
                         match piece {
                             Piece::Pawn(_data)
-                                if pos[1] == piece.get_data().side.other().get_back_rank() =>
+                                if pos[1] == piece.data().side.other().back_rank() =>
                             {
                                 sidebar.add_pawn_buttons();
                                 self.pawn_promotion_move = Some(pos);

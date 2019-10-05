@@ -14,6 +14,7 @@ mod chessboard_controller;
 mod chessboard_view;
 mod piece;
 mod sidebar;
+mod ai;
 
 use crate::chessboard::Chessboard;
 use crate::chessboard_controller::ChessboardController;

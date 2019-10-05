@@ -65,7 +65,7 @@ impl ChesspieceTextures {
         }
     }
 
-    pub fn get_piece_texture(&self, piece: &Piece) -> &Texture {
+    pub fn piece_texture(&self, piece: &Piece) -> &Texture {
         match piece {
             Piece::King(data) => {
                 if data.side == Side::Light {
@@ -212,7 +212,7 @@ impl ChessboardView {
         for piece_rect in &controller.piece_rects {
             let img: Image = (&piece_rect.rect).into();
             img.draw(
-                settings.textures.get_piece_texture(&piece_rect.piece),
+                settings.textures.piece_texture(&piece_rect.piece),
                 &c.draw_state,
                 c.transform,
                 g,

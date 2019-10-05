@@ -9,7 +9,7 @@ pub enum Side {
 
 impl Side {
     #[inline(always)]
-    pub fn get_back_rank(self) -> u8 {
+    pub fn back_rank(self) -> u8 {
         match self {
             Side::Light => 0,
             Side::Dark => BOARD_SIZE - 1,
@@ -45,14 +45,15 @@ mod pawn_settings {
     use super::*;
 
     #[inline(always)]
-    pub fn get_start_rank(side: Side) -> u8 {
+    pub fn start_rank(side: Side) -> u8 {
         match side {
             Side::Light => 1,
             Side::Dark => BOARD_SIZE - 2,
         }
     }
+
     #[inline(always)]
-    pub fn get_direction(side: Side) -> i8 {
+    pub fn direction(side: Side) -> i8 {
         match side {
             Side::Light => 1,
             Side::Dark => -1,
@@ -64,7 +65,7 @@ impl Eq for Piece {}
 
 impl PartialEq for Piece {
     fn eq(&self, other: &Self) -> bool {
-        self.get_data() == other.get_data()
+        self.data() == other.data()
     }
 }
 
@@ -82,7 +83,7 @@ pub enum MoveType {
 
 impl Piece {
     #[inline(always)]
-    pub fn get_data(&self) -> &PieceData {
+    pub fn data(&self) -> &PieceData {
         match &self {
             Piece::Pawn(data)
             | Piece::Rook(data)
@@ -94,7 +95,7 @@ impl Piece {
     }
 
     #[inline(always)]
-    pub fn get_data_mut(&mut self) -> &mut PieceData {
+    pub fn data_mut(&mut self) -> &mut PieceData {
         match self {
             Piece::Pawn(data)
             | Piece::Rook(data)
@@ -106,7 +107,7 @@ impl Piece {
     }
 
     #[inline(always)]
-    pub fn get_dx_dy(start: [u8; 2], end: [u8; 2]) -> (i8, i8) {
+    pub fn dx_dy(start: [u8; 2], end: [u8; 2]) -> (i8, i8) {
         (
             (end[0] as i8) - (start[0] as i8),
             (end[1] as i8) - (start[1] as i8),
@@ -121,16 +122,16 @@ impl Piece {
         dy: i8,
     ) -> MoveType {
         let mut current = [
-            self.get_data().position[0] as i8 + dx.signum(),
-            self.get_data().position[1] as i8 + dy.signum(),
+            self.data().position[0] as i8 + dx.signum(),
+            self.data().position[1] as i8 + dy.signum(),
         ];
         // while we are on the board
         while let Some(cur) = Chessboard::on_board(current) {
             // if there is another piece of the same color in this spot, invalid
             // this includes end_pos
-            if let Some(other_piece) = chessboard.get_piece_at(cur) {
+            if let Some(other_piece) = chessboard.piece_at(cur) {
                 // if they're on the same side, it's always invalid
-                if other_piece.get_data().side == self.get_data().side {
+                if other_piece.data().side == self.data().side {
                     return MoveType::Invalid;
                 } else if cur == end_pos {
                     // if they're on opposite sides, it's only valid if this is the end_pos
@@ -159,21 +160,21 @@ impl Piece {
     ) -> MoveType {
         let original_move_type = match self {
             Piece::Bishop(data) => {
-                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                let (dx, dy) = Piece::dx_dy(data.position, end_pos);
                 if dx.abs() != dy.abs() {
                     return MoveType::Invalid;
                 }
                 self.step_through_positions(chessboard, end_pos, dx, dy)
             }
             Piece::Rook(data) => {
-                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                let (dx, dy) = Piece::dx_dy(data.position, end_pos);
                 if dx != 0 && dy != 0 {
                     return MoveType::Invalid;
                 }
                 self.step_through_positions(chessboard, end_pos, dx, dy)
             }
             Piece::Queen(data) => {
-                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                let (dx, dy) = Piece::dx_dy(data.position, end_pos);
                 //println!("dx: {:?}, dy: {:?}, result: {:?}", dx, dy, dx != 0 && dy != 0);
                 if dx.abs() != dy.abs() && dx != 0 && dy != 0 {
                     return MoveType::Invalid;
@@ -181,10 +182,10 @@ impl Piece {
                 self.step_through_positions(chessboard, end_pos, dx, dy)
             }
             Piece::Knight(data) => {
-                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                let (dx, dy) = Piece::dx_dy(data.position, end_pos);
                 if (dx.abs() == 1 && dy.abs() == 2) || (dx.abs() == 2 && dy.abs() == 1) {
-                    if let Some(other_piece) = chessboard.get_piece_at(end_pos) {
-                        if other_piece.get_data().side == data.side {
+                    if let Some(other_piece) = chessboard.piece_at(end_pos) {
+                        if other_piece.data().side == data.side {
                             MoveType::Invalid
                         } else {
                             MoveType::Capture
@@ -197,35 +198,35 @@ impl Piece {
                 }
             }
             Piece::Pawn(data) => {
-                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                let (dx, dy) = Piece::dx_dy(data.position, end_pos);
                 if dx == 0
-                    && dy == pawn_settings::get_direction(data.side)
-                    && chessboard.get_piece_at(end_pos) == None
+                    && dy == pawn_settings::direction(data.side)
+                    && chessboard.piece_at(end_pos) == None
                 {
                     // regular move forward
-                    if end_pos[1] == data.side.other().get_back_rank() {
+                    if end_pos[1] == data.side.other().back_rank() {
                         MoveType::PawnPromotion
                     } else {
                         MoveType::Regular
                     }
-                } else if data.position[1] == pawn_settings::get_start_rank(data.side)
+                } else if data.position[1] == pawn_settings::start_rank(data.side)
                     && dx == 0
                     && dy.abs() == 2
-                    && chessboard.get_piece_at([
+                    && chessboard.piece_at([
                         data.position[0],
-                        (data.position[1] as i8 + pawn_settings::get_direction(data.side)) as u8,
+                        (data.position[1] as i8 + pawn_settings::direction(data.side)) as u8,
                     ]) == None
-                    && chessboard.get_piece_at(end_pos) == None
+                    && chessboard.piece_at(end_pos) == None
                 {
                     // doublestep at beginning
                     MoveType::Doublestep
-                } else if dx.abs() == 1 && dy == pawn_settings::get_direction(data.side) {
+                } else if dx.abs() == 1 && dy == pawn_settings::direction(data.side) {
                     // capturing diagonally
-                    let capture = chessboard.get_piece_at(end_pos);
+                    let capture = chessboard.piece_at(end_pos);
                     if let Some(capture) = capture {
-                        if capture.get_data().side != data.side {
+                        if capture.data().side != data.side {
                             //MoveType::Capture
-                            if end_pos[1] == data.side.other().get_back_rank() {
+                            if end_pos[1] == data.side.other().back_rank() {
                                 MoveType::PawnPromotionCapture
                             } else {
                                 MoveType::Capture
@@ -235,7 +236,7 @@ impl Piece {
                         }
                     } else if let Some(en_passant) = chessboard.en_passant {
                         if en_passant[0] == end_pos[0]
-                            && (en_passant[1] as i8 + pawn_settings::get_direction(data.side)) as u8
+                            && (en_passant[1] as i8 + pawn_settings::direction(data.side)) as u8
                                 == end_pos[1]
                         {
                             MoveType::EnPassant
@@ -250,10 +251,10 @@ impl Piece {
                 }
             }
             Piece::King(data) => {
-                let (dx, dy) = Piece::get_dx_dy(data.position, end_pos);
+                let (dx, dy) = Piece::dx_dy(data.position, end_pos);
                 if dx.abs() <= 1 && dy.abs() <= 1 {
-                    if let Some(other_piece) = chessboard.get_piece_at(end_pos) {
-                        if other_piece.get_data().side == data.side {
+                    if let Some(other_piece) = chessboard.piece_at(end_pos) {
+                        if other_piece.data().side == data.side {
                             return MoveType::Invalid;
                         }
                         MoveType::Capture
@@ -273,25 +274,23 @@ impl Piece {
 
                     // 1 and 2 automatically checked here
                     let castle_type = chessboard
-                        .get_castle_rights(data.side)
+                        .castle_rights(data.side)
                         .check_end_pos(end_pos, data.side);
                     if castle_type == CastleRights::NoRights {
                         return MoveType::Invalid;
                     }
 
-                    let rook = castle_type.get_rook_init_pos(data.side).unwrap();
+                    let rook = castle_type.rook_init_pos(data.side).unwrap();
                     //There are no pieces between the king and the chosen rook.
-                    if castle_type == CastleRights::KingSide {
-                        for x in data.position[0] + 1..rook[0] {
-                            if let Some(_p) = chessboard.get_piece_at([x, data.side.get_back_rank()]) {
-                                return MoveType::Invalid;
-                            }
-                        }
+                    let iter = if castle_type == CastleRights::KingSide {
+                        data.position[0] + 1..rook[0]
                     } else {
-                        for x in rook[0] + 1..data.position[0] {
-                            if let Some(_p) = chessboard.get_piece_at([x, data.side.get_back_rank()]) {
-                                return MoveType::Invalid;
-                            }
+                        rook[0] + 1..data.position[0]
+                    };
+
+                    for x in iter {
+                        if let Some(_p) = chessboard.piece_at([x, data.side.back_rank()]) {
+                            return MoveType::Invalid;
                         }
                     }
 
@@ -312,16 +311,16 @@ impl Piece {
                     {
                         // check if the king will move through check.
                         let mut temp_chessboard = chessboard.clone();
-                        let (dx, _dy) = Piece::get_dx_dy(data.position, end_pos);
+                        let (dx, _dy) = Piece::dx_dy(data.position, end_pos);
                         let mut temp_king = self.clone();
                         let temp_pos = [
                             (data.position[0] as i8 + dx.signum()) as u8,
                             data.position[1],
                         ];
-                        temp_king.get_data_mut().position = temp_pos;
+                        temp_king.data_mut().position = temp_pos;
                         temp_chessboard.insert(temp_pos, temp_king);
                         if temp_chessboard
-                            .is_king_in_check(temp_chessboard.get_piece_at(temp_pos).unwrap())
+                            .is_king_in_check(temp_chessboard.piece_at(temp_pos).unwrap())
                         {
                             return MoveType::Invalid;
                         }
@@ -338,7 +337,7 @@ impl Piece {
             let mut temp_board = chessboard.clone();
             temp_board.apply_move(self.clone(), original_move_type, end_pos, promotion);
             //println!("{:?} is king in temp_board after {:?} to {:?}", temp_board.get_king(self.get_data().side), self, end_pos);
-            if temp_board.is_side_in_check(self.get_data().side) {
+            if temp_board.is_side_in_check(self.data().side) {
                 //println!("Check for check failed");
                 MoveType::Invalid
             } else {

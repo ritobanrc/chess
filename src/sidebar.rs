@@ -120,7 +120,7 @@ impl Sidebar {
         Rectangle::new([0.2, 0.2, 0.2, 1.0]).draw(rect, draw_state, transform, g);
 
         { // turn display
-            let y = match controller.get_turn() {
+            let y = match controller.turn() {
                 Side::Dark => self.rect.top() + 20.0,
                 Side::Light => self.rect.bottom() - 20.0,
             };
@@ -150,7 +150,7 @@ impl Sidebar {
             let size = 13;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.top() + f64::from(size) + 40.0);
             Text::new_color(TEXT_COLOR, size)
-                .draw(&controller.get_captures_for_side(Side::Dark).display(), cache, draw_state, transform, g)
+                .draw(&controller.captures(Side::Dark).display(), cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
@@ -159,7 +159,7 @@ impl Sidebar {
             let size = 13;
             let transform = transform.trans(self.rect.left() + 10.0, self.rect.bottom() - 40.0);
             Text::new_color(TEXT_COLOR, size)
-                .draw(&controller.get_captures_for_side(Side::Light).display(), cache, draw_state, transform, g)
+                .draw(&controller.captures(Side::Light).display(), cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
         }
 
@@ -171,7 +171,7 @@ impl Sidebar {
             Text::new_color(TEXT_COLOR, 12)
                 .draw("Checkmate", cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
-        } else if controller.get_check_for_side(Side::Dark) {
+        } else if controller.check(Side::Dark) {
             let transform = transform.trans(self.rect.center_x(), self.rect.top() + 10.0 + 20.0);
             Text::new_color(TEXT_COLOR, 12)
                 .draw("Check", cache, draw_state, transform, g)
@@ -187,7 +187,7 @@ impl Sidebar {
             Text::new_color(TEXT_COLOR, 12)
                 .draw("Checkmate", cache, draw_state, transform, g)
                 .unwrap_or_else(|_| panic!("Error rendering text")); // somehow, this error doesn't implement Debug.
-        } else if controller.get_check_for_side(Side::Light) {
+        } else if controller.check(Side::Light) {
             let transform = transform.trans(self.rect.center_x(), self.rect.bottom() - 10.0);
             Text::new_color(TEXT_COLOR, 12)
                 .draw("Check", cache, draw_state, transform, g)
