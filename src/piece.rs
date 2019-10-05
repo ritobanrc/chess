@@ -1,7 +1,7 @@
 use crate::chessboard::{CastleRights, Chessboard};
 use crate::BOARD_SIZE;
 
-#[derive(PartialEq, Hash, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum Side {
     Light,
     Dark,

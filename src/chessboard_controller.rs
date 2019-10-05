@@ -287,7 +287,7 @@ impl ChessboardController {
             //let best_move = rx.recv().unwrap();
             thread::spawn(move || {
                 let chessboard = unsafe { &(*chessboard.0) };
-                let best_move = ai::get_best_move(chessboard);
+                let best_move = ai::get_best_move(chessboard, 3);
                 println!("Found best Move: {:?}", best_move);
                 tx.send(best_move).unwrap();
             });
@@ -316,7 +316,7 @@ impl ChessboardController {
                         self.ai_rx = None;
                     },
                     Err(mpsc::TryRecvError::Empty) => { /* nothing's happened, keep going */ },
-                    Err(mpsc::TryRecvError::Disconnected) => { eprintln!("AI disconnected") },
+                    Err(mpsc::TryRecvError::Disconnected) => { panic!("AI disconnected") },
                 }
             }
         }
