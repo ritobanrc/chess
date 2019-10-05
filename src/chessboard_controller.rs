@@ -7,6 +7,8 @@ use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
 use std::fmt::Write;
+use std::thread;
+use std::sync::mpsc;
 
 pub struct PieceRect {
     pub piece: Piece,
@@ -20,6 +22,7 @@ pub struct CaptureCount {
     knight_count: u8,
     pawn_count: u8,
 }
+
 
 impl CaptureCount {
     pub fn new() -> CaptureCount {
@@ -96,6 +99,7 @@ pub struct ChessboardController {
     light_check: bool,
     dark_check: bool,
     pub game_result: (Checkmate, Side),
+    ai_rx: Option<mpsc::Receiver<(&'static Piece, [u8; 2])>>,
     chessboard: Chessboard,
 }
 
@@ -116,6 +120,7 @@ impl ChessboardController {
             // while I could go to the effort of making this an Option<Side>, I don't think it's
             // worth it
             game_result: (Checkmate::Nothing, Side::Light),
+            ai_rx: None,
             chessboard,
         }
     }
@@ -265,14 +270,29 @@ impl ChessboardController {
         }
 
         if self.chessboard.turn == Side::Dark {
-            //thread::sleep(time::Duration::new(2, 0));
-            //let (tx, rx) = mpsc::channel();
+            let (tx, rx) = mpsc::channel();
+
+            struct ChessboardPtr(*const Chessboard);
+
+            unsafe impl Send for ChessboardPtr { }
+            unsafe impl Sync for ChessboardPtr { }
+
+            // This needs to be unsafe because I'm sending an immutable reference to the ai
+            // While the AI runs, event (which takes a controller, and thus mutable chessboard) still needs to run
+            // There is no way to convince the borrow checker than `event` won't actually modify
+            // chessboard (because it's not the other person's turn). That is a logical distinction that I can make based on how turns in
+            // chess work.
+            let chessboard = ChessboardPtr(&self.chessboard as *const Chessboard);
 
             //let best_move = rx.recv().unwrap();
-            let best_move = ai::get_best_move(&self.chessboard);
-            let piece = self.piece_idx_in_piece_rects(best_move.0);
-            let pos = best_move.1;
-            self.try_move(piece, pos, Some(&Piece::Queen));
+            thread::spawn(move || {
+                let chessboard = unsafe { &(*chessboard.0) };
+                let best_move = ai::get_best_move(chessboard);
+                println!("Found best Move: {:?}", best_move);
+                tx.send(best_move).unwrap();
+            });
+
+            self.ai_rx = Some(rx);
         }
     }
 
@@ -282,6 +302,25 @@ impl ChessboardController {
 
     /// Handle events to the chessboard (piece dragging)
     pub fn event<E: GenericEvent>(&mut self, e: &E, sidebar: &mut Sidebar) {
+        // check if the AI has sent back something
+        // I can't seem to figure out why UpdateEvent isn't called
+        // So there is a slight lag between when the best move is found
+        // And when the move is actually made
+        if let Some(_) = e.update_args() {
+            if let Some(rx) = &self.ai_rx {
+                match rx.try_recv() {
+                    Ok(best_move) => {
+                        let piece = self.piece_idx_in_piece_rects(best_move.0);
+                        let pos = best_move.1;
+                        self.try_move(piece, pos, Some(&Piece::Queen));
+                        self.ai_rx = None;
+                    },
+                    Err(mpsc::TryRecvError::Empty) => { /* nothing's happened, keep going */ },
+                    Err(mpsc::TryRecvError::Disconnected) => { eprintln!("AI disconnected") },
+                }
+            }
+        }
+
         let drag_controller = &mut self.drag_controller;
         let piece_rects = &self.piece_rects;
         let turn = &self.chessboard.turn;
@@ -351,6 +390,7 @@ impl ChessboardController {
                 }
             };
         }
+
     }
 
     pub fn trigger_pawn_promotion(&mut self, promotion: &dyn Fn(PieceData) -> Piece) {

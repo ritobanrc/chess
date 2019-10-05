@@ -59,8 +59,9 @@ fn main() {
     // Create a new game and run it.
     let mut gl = GlGraphics::new(opengl);
 
-    let mut events = Events::new(EventSettings::new().lazy(true));
+    let mut events = Events::new(EventSettings::new().lazy(false));
     while let Some(e) = events.next(&mut window) {
+        //println!("{:?}", e);
         controller.event(&e, &mut sidebar);
         sidebar.event(&e, &mut controller);
         if let Some(args) = e.render_args() {

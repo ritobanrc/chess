@@ -159,7 +159,7 @@ pub enum Checkmate {
 impl Chessboard {
     /// Creates a new chessboard with the standard arrangement of pieces
     pub fn standard() -> Chessboard {
-        let mut pieces = HashMap::new();
+        let mut pieces = HashMap::with_capacity(32);
 
         create_piece(&mut pieces, str_to_pos("a1"), Side::Light, &Piece::Rook);
         create_piece(&mut pieces, str_to_pos("b1"), Side::Light, &Piece::Knight);
