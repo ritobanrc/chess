@@ -5,10 +5,11 @@ use std::{thread, time};
 const MAX_SIDE: Side = Side::Light;
 const MIN_SIDE: Side = Side::Dark;
 
+// So it seems that using this causes the negamax algorithm to have a double negative
 fn side_sign(side: Side) -> i32 {
     match side {
         MAX_SIDE => 1,
-        MIN_SIDE => -1
+        MIN_SIDE => 1
     }
 }
 
@@ -21,8 +22,11 @@ pub fn get_best_move(chessboard: &Chessboard, depth: u8) -> (&Piece, [u8; 2]) {
     for m in possible_moves.iter() {
         let mut temp = chessboard.clone();
         temp.try_move(&m.0, m.1, Some(&Piece::Queen));
-        scores.push(minimax_score(&temp, depth - 1));
+        // using 2 billion to avoid overflow when negating
+        scores.push(negamax_score(&temp, depth - 1, -2_000_000_000, 2_000_000_000));
     }
+
+    //println!("{:?}", scores);
 
     if chessboard.turn == MAX_SIDE {
         scores.iter().zip(possible_moves).max_by(|a, b| a.0.cmp(b.0)).unwrap().1
@@ -31,35 +35,25 @@ pub fn get_best_move(chessboard: &Chessboard, depth: u8) -> (&Piece, [u8; 2]) {
     }
 }
 
-fn minimax_score(chessboard: &Chessboard, depth: u8) -> i32 {
+fn negamax_score(chessboard: &Chessboard, depth: u8, mut alpha: i32, beta: i32) -> i32 {
     if depth == 0 {
         return heuristic_score(chessboard);
     }
-    if chessboard.turn == MAX_SIDE {
-        let mut score = i32::min_value();
-        let possible_moves = chessboard.possible_moves(chessboard.turn);
-        if possible_moves.len() == 0 {
-            return heuristic_score(chessboard)
-        }
-        for m in possible_moves.iter() {
-            let mut temp = chessboard.clone();
-            temp.try_move(&m.0, m.1, Some(&Piece::Queen));
-            score = i32::max(score, minimax_score(&temp, depth - 1))
-        }
-        score
-    } else {
-        let mut score = i32::max_value();
-        let possible_moves = chessboard.possible_moves(chessboard.turn);
-        if possible_moves.len() == 0 {
-            return heuristic_score(chessboard)
-        }
-        for m in possible_moves.iter() {
-            let mut temp = chessboard.clone();
-            temp.try_move(&m.0, m.1, Some(&Piece::Queen));
-            score = i32::min(score, minimax_score(&temp, depth - 1))
-        }
-        score
+    let mut score = i32::min_value();
+    let possible_moves = chessboard.possible_moves(chessboard.turn);
+    if possible_moves.is_empty() {
+        return heuristic_score(chessboard)
     }
+    for m in possible_moves.iter() {
+        let mut temp = chessboard.clone();
+        temp.try_move(&m.0, m.1, Some(&Piece::Queen));
+        score = i32::max(score, -negamax_score(&temp, depth - 1, -beta, -alpha));
+        alpha = i32::max(alpha, score);
+        if alpha >= beta {
+            break;
+        }
+    }
+    score
 }
 
 fn heuristic_score(chessboard: &Chessboard) -> i32 {

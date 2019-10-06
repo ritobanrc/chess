@@ -10,6 +10,8 @@ use std::fmt::Write;
 use std::thread;
 use std::sync::mpsc;
 
+static AI_LEVEL: u8 = 5;
+
 pub struct PieceRect {
     pub piece: Piece,
     pub rect: Rectangle,
@@ -287,7 +289,7 @@ impl ChessboardController {
             //let best_move = rx.recv().unwrap();
             thread::spawn(move || {
                 let chessboard = unsafe { &(*chessboard.0) };
-                let best_move = ai::get_best_move(chessboard, 3);
+                let best_move = ai::get_best_move(chessboard, AI_LEVEL);
                 println!("Found best Move: {:?}", best_move);
                 tx.send(best_move).unwrap();
             });
@@ -306,7 +308,7 @@ impl ChessboardController {
         // I can't seem to figure out why UpdateEvent isn't called
         // So there is a slight lag between when the best move is found
         // And when the move is actually made
-        if let Some(_) = e.update_args() {
+        if e.update_args().is_some() {
             if let Some(rx) = &self.ai_rx {
                 match rx.try_recv() {
                     Ok(best_move) => {
