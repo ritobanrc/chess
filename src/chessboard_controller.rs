@@ -10,7 +10,8 @@ use std::fmt::Write;
 use std::thread;
 use std::sync::mpsc;
 
-static AI_LEVEL: u8 = 5;
+static AI_LEVEL: u8 = 3;
+static AI_SIDE: Side = Side::Dark;
 
 pub struct PieceRect {
     pub piece: Piece,
@@ -271,7 +272,7 @@ impl ChessboardController {
             println!("Black in Check");
         }
 
-        if self.chessboard.turn == Side::Dark {
+        if self.chessboard.turn == AI_SIDE {
             let (tx, rx) = mpsc::channel();
 
             struct ChessboardPtr(*const Chessboard);

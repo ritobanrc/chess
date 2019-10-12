@@ -2,6 +2,7 @@ extern crate glutin_window;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
+extern crate rayon;
 
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::*;
