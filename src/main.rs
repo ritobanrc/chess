@@ -39,7 +39,8 @@ fn main() {
         .build()
         .unwrap();
 
-    let chessboard = Chessboard::standard();
+    //let chessboard = Chessboard::from_fen(String::from("8/8/8/3K4/8/8/1r3k2/6r1 w - - 0 1"));
+    let chessboard = Chessboard::from_fen(String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
     let view_settings = { ChessboardViewSettings::new() };
     let view = ChessboardView::new(view_settings);
     let mut controller = ChessboardController::new(chessboard);

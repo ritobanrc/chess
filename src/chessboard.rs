@@ -71,6 +71,23 @@ impl CastleRights {
         }
     }
 
+
+    pub fn add_right(self, to_add: CastleRights) -> CastleRights {
+        if self == CastleRights::Both || to_add == CastleRights::NoRights || to_add == self {
+            return self; // nothing changes
+        }
+        if to_add == CastleRights::Both {
+            return CastleRights::Both // if both are added, we have both
+        }
+        if self == CastleRights::NoRights {
+            return to_add // if we had nothing, then all we have now is what we just added
+        }
+        // self is not NoRights, and self is not the same as add. This means we either have King
+        // and added Queen, or had Queen and Added King. In either case, we now have both.
+        CastleRights::Both
+    }
+
+
     pub fn remove_rights(self, to_remove: CastleRights) -> CastleRights {
         if self == CastleRights::NoRights || to_remove == CastleRights::NoRights {
             return self; // nothing changes
@@ -191,6 +208,75 @@ impl Chessboard {
             turn: Side::Light,
             light_castle: CastleRights::Both,
             dark_castle: CastleRights::Both,
+        }
+    }
+
+    pub fn from_fen(fen: String) -> Self {
+        // TODO: Halfmove and fullmove clocks
+        if let [board, turn, castle, ep, _, _] =  fen.split(' ').collect::<Vec<_>>()[..] {
+            let mut pieces = HashMap::with_capacity(32);
+
+            let mut rank = 7u8; // ranks 1-8 correspond to numbers 1-7
+            let mut file = 0u8; // files a-h correspond to 1-7
+            for c in board.chars() {
+                // if it's a number, we have that many whitespaces
+                if let Some(empties) = c.to_digit(10) {
+                    file += empties as u8;
+                } else if c == '/' {
+                    rank -= 1u8;
+                    file = 0u8;
+                } else {
+                    match c {
+                        'r' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Rook); file += 1; },
+                        'n' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Knight); file += 1; },
+                        'b' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Bishop); file += 1; },
+                        'q' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Queen); file += 1; },
+                        'k' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::King); file += 1; },
+                        'p' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Pawn); file += 1; },
+
+                        'R' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Rook); file += 1; },
+                        'N' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Knight); file += 1; },
+                        'B' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Bishop); file += 1; },
+                        'Q' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Queen); file += 1; },
+                        'K' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::King); file += 1; },
+                        'P' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Pawn); file += 1; },
+                        _ => panic!("Invalid FEN")
+                    }
+                }
+            }
+
+
+            let turn = match turn {
+                "w" => Side::Light,
+                "b" => Side::Dark,
+                _ => panic!("Invalid FEN Entered")
+            };
+
+            let mut light_castle = CastleRights::NoRights;
+            let mut dark_castle = CastleRights::NoRights;
+
+            for c in castle.chars() {
+                match c {
+                    '-' => break,
+                    'K' => light_castle = light_castle.add_right(CastleRights::KingSide),
+                    'Q' => light_castle = light_castle.add_right(CastleRights::QueenSide),
+                    'k' => dark_castle = dark_castle.add_right(CastleRights::KingSide),
+                    'q' => dark_castle = dark_castle.add_right(CastleRights::QueenSide),
+                    _ => panic!("Invalid FEN")
+                }
+            }
+
+            let ep = if ep == "-" { None } else { Some(str_to_pos(ep)) };
+
+            Chessboard {
+                pieces,
+                en_passant: ep,
+                turn: turn,
+                light_castle: light_castle,
+                dark_castle: dark_castle,
+            }
+        } else {
+            panic!("Invalid FEN Entered")
         }
     }
 

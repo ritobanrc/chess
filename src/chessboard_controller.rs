@@ -10,8 +10,9 @@ use std::fmt::Write;
 use std::thread;
 use std::sync::mpsc;
 
-static AI_LEVEL: u8 = 3;
+static AI_LEVEL: u8 = 5;
 static AI_SIDE: Side = Side::Dark;
+static AI: bool = true;
 
 pub struct PieceRect {
     pub piece: Piece,
@@ -272,7 +273,7 @@ impl ChessboardController {
             println!("Black in Check");
         }
 
-        if self.chessboard.turn == AI_SIDE {
+        if AI && self.chessboard.turn == AI_SIDE {
             let (tx, rx) = mpsc::channel();
 
             struct ChessboardPtr(*const Chessboard);
@@ -291,7 +292,8 @@ impl ChessboardController {
             thread::spawn(move || {
                 let chessboard = unsafe { &(*chessboard.0) };
                 let best_move = ai::get_best_move(chessboard, AI_LEVEL);
-                println!("Found best Move: {:?}", best_move);
+                use ai::SimpleMove;
+                println!("Found best Move: {:?}", SimpleMove(best_move));
                 tx.send(best_move).unwrap();
             });
 
@@ -321,6 +323,10 @@ impl ChessboardController {
                     Err(mpsc::TryRecvError::Empty) => { /* nothing's happened, keep going */ },
                     Err(mpsc::TryRecvError::Disconnected) => { panic!("AI disconnected") },
                 }
+                // if there is an AI currently running, the player cannot interact with the pieces.
+                // otherwise, the unsafe used to a get an immutable reference to the chessboard is
+                // actually unsafe.
+                return
             }
         }
 
