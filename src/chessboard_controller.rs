@@ -1,5 +1,5 @@
 use crate::ai;
-use crate::chessboard::{Chessboard, MoveResult, Checkmate};
+use crate::chessboard::{Checkmate, Chessboard, MoveResult};
 use crate::piece::{Piece, PieceData, Side};
 use crate::sidebar::Sidebar;
 use crate::{BOARD_BORDER_SIZE, BOARD_SIZE, HEIGHT};
@@ -7,10 +7,10 @@ use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
 use std::fmt::Write;
-use std::thread;
 use std::sync::mpsc;
+use std::thread;
 
-static AI_LEVEL: u8 = 5;
+static AI_LEVEL: u8 = 4;
 static AI_SIDE: Side = Side::Dark;
 static AI: bool = true;
 
@@ -27,15 +27,14 @@ pub struct CaptureCount {
     pawn_count: u8,
 }
 
-
 impl CaptureCount {
     pub fn new() -> CaptureCount {
         CaptureCount {
-            queen_count:  0,
-            rook_count:   0,
+            queen_count: 0,
+            rook_count: 0,
             bishop_count: 0,
             knight_count: 0,
-            pawn_count:   0,
+            pawn_count: 0,
         }
     }
 
@@ -43,19 +42,19 @@ impl CaptureCount {
         match piece {
             Piece::Queen(_) => {
                 self.queen_count += 1;
-            },
+            }
             Piece::Rook(_) => {
                 self.rook_count += 1;
-            },
+            }
             Piece::Bishop(_) => {
                 self.bishop_count += 1;
-            },
+            }
             Piece::Knight(_) => {
                 self.knight_count += 1;
-            },
+            }
             Piece::Pawn(_) => {
                 self.pawn_count += 1;
-            },
+            }
             Piece::King(_) => panic!("We captured a king!"),
         }
     }
@@ -82,7 +81,6 @@ impl CaptureCount {
     }
 }
 
-
 pub struct ChessboardController {
     /// Position from left-top corner.
     pub position: [f64; 2],
@@ -104,6 +102,7 @@ pub struct ChessboardController {
     dark_check: bool,
     pub game_result: (Checkmate, Side),
     ai_rx: Option<mpsc::Receiver<(&'static Piece, [u8; 2])>>,
+    temp_stored_hash: u64,
     chessboard: Chessboard,
 }
 
@@ -125,6 +124,7 @@ impl ChessboardController {
             // worth it
             game_result: (Checkmate::Nothing, Side::Light),
             ai_rx: None,
+            temp_stored_hash: chessboard.zobrist_hash(),
             chessboard,
         }
     }
@@ -195,9 +195,14 @@ impl ChessboardController {
     ) {
         let side = self.piece_rects[idx].piece.data().side;
         // get the chessboard, tell it to try the move.
+        let piece  = &self.piece_rects[idx].piece;
+
+        println!("{:?}", Chessboard::update_hash(self.temp_stored_hash, piece, pos));
+
         let move_result = self
             .chessboard
-            .try_move(&self.piece_rects[idx].piece, pos, promotion);
+            .try_move(piece, pos, promotion);
+
 
         // In the event that some idiot (cough..me..cough) made it so the
         // chessboard pieces aren't directly linked to the piece rect pieces,
@@ -251,17 +256,21 @@ impl ChessboardController {
                     self.square_rect(self.piece_rects[pos].piece.data().position);
             }
         };
+
+        self.temp_stored_hash = self.chessboard.zobrist_hash();
+        println!("{:?}", self.temp_stored_hash);
+
         self.game_result = (self.chessboard.is_checkmated(side.other()), side);
         match self.game_result.0 {
             Checkmate::Checkmate => {
                 println!("Game Over! {:?} wins", self.game_result.1);
                 return;
-            },
+            }
             Checkmate::Stalemate => {
                 println!("Game Over! Draw");
                 return;
             }
-            _ => { }
+            _ => {}
         }
 
         self.light_check = self.chessboard.is_side_in_check(Side::Light);
@@ -273,13 +282,16 @@ impl ChessboardController {
             println!("Black in Check");
         }
 
+
+        //println!("{:?}", self.chessboard.zobrist_hash());
+
         if AI && self.chessboard.turn == AI_SIDE {
             let (tx, rx) = mpsc::channel();
 
             struct ChessboardPtr(*const Chessboard);
 
-            unsafe impl Send for ChessboardPtr { }
-            unsafe impl Sync for ChessboardPtr { }
+            unsafe impl Send for ChessboardPtr {}
+            unsafe impl Sync for ChessboardPtr {}
 
             // This needs to be unsafe because I'm sending an immutable reference to the ai
             // While the AI runs, event (which takes a controller, and thus mutable chessboard) still needs to run
@@ -302,7 +314,10 @@ impl ChessboardController {
     }
 
     fn piece_idx_in_piece_rects(&self, piece: &Piece) -> usize {
-        self.piece_rects.iter().position(|piece_rect| &piece_rect.piece == piece).unwrap()
+        self.piece_rects
+            .iter()
+            .position(|piece_rect| &piece_rect.piece == piece)
+            .unwrap()
     }
 
     /// Handle events to the chessboard (piece dragging)
@@ -319,16 +334,22 @@ impl ChessboardController {
                         let pos = best_move.1;
                         self.try_move(piece, pos, Some(&Piece::Queen));
                         self.ai_rx = None;
-                    },
-                    Err(mpsc::TryRecvError::Empty) => { /* nothing's happened, keep going */ },
-                    Err(mpsc::TryRecvError::Disconnected) => { panic!("AI disconnected") },
+                    }
+                    Err(mpsc::TryRecvError::Empty) => { /* nothing's happened, keep going */ }
+                    Err(mpsc::TryRecvError::Disconnected) => panic!("AI disconnected"),
                 }
-                // if there is an AI currently running, the player cannot interact with the pieces.
-                // otherwise, the unsafe used to a get an immutable reference to the chessboard is
-                // actually unsafe.
-                return
+                return;
             }
         }
+
+        // if there is an AI currently running, the player cannot interact with the pieces.
+        // otherwise, the unsafe used to a get an immutable reference to the chessboard is
+        // actually unsafe. This has to be separate, because it applies to all events, not just
+        // update events.
+        if self.ai_rx.is_some() {
+            return;
+        }
+
 
         let drag_controller = &mut self.drag_controller;
         let piece_rects = &self.piece_rects;
@@ -399,7 +420,6 @@ impl ChessboardController {
                 }
             };
         }
-
     }
 
     pub fn trigger_pawn_promotion(&mut self, promotion: &dyn Fn(PieceData) -> Piece) {

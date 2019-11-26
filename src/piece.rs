@@ -186,7 +186,7 @@ impl Piece {
                 if (dx.abs() == 1 && dy.abs() == 2) || (dx.abs() == 2 && dy.abs() == 1) {
                     if let Some(other_piece) = chessboard.piece_at(end_pos) {
                         if other_piece.data().side == data.side {
-                            return MoveType::Invalid
+                            return MoveType::Invalid;
                         } else {
                             MoveType::Capture
                         }
@@ -194,7 +194,7 @@ impl Piece {
                         MoveType::Regular
                     }
                 } else {
-                    return MoveType::Invalid
+                    return MoveType::Invalid;
                 }
             }
             Piece::Pawn(data) => {
@@ -232,7 +232,7 @@ impl Piece {
                                 MoveType::Capture
                             }
                         } else {
-                            return MoveType::Invalid
+                            return MoveType::Invalid;
                         }
                     } else if let Some(en_passant) = chessboard.en_passant {
                         if en_passant[0] == end_pos[0]
@@ -241,13 +241,13 @@ impl Piece {
                         {
                             MoveType::EnPassant
                         } else {
-                            return MoveType::Invalid
+                            return MoveType::Invalid;
                         }
                     } else {
-                        return MoveType::Invalid
+                        return MoveType::Invalid;
                     }
                 } else {
-                    return MoveType::Invalid
+                    return MoveType::Invalid;
                 }
             }
             Piece::King(data) => {

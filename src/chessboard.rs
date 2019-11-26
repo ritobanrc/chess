@@ -71,22 +71,20 @@ impl CastleRights {
         }
     }
 
-
     pub fn add_right(self, to_add: CastleRights) -> CastleRights {
         if self == CastleRights::Both || to_add == CastleRights::NoRights || to_add == self {
             return self; // nothing changes
         }
         if to_add == CastleRights::Both {
-            return CastleRights::Both // if both are added, we have both
+            return CastleRights::Both; // if both are added, we have both
         }
         if self == CastleRights::NoRights {
-            return to_add // if we had nothing, then all we have now is what we just added
+            return to_add; // if we had nothing, then all we have now is what we just added
         }
         // self is not NoRights, and self is not the same as add. This means we either have King
         // and added Queen, or had Queen and Added King. In either case, we now have both.
         CastleRights::Both
     }
-
 
     pub fn remove_rights(self, to_remove: CastleRights) -> CastleRights {
         if self == CastleRights::NoRights || to_remove == CastleRights::NoRights {
@@ -213,7 +211,7 @@ impl Chessboard {
 
     pub fn from_fen(fen: String) -> Self {
         // TODO: Halfmove and fullmove clocks
-        if let [board, turn, castle, ep, _, _] =  fen.split(' ').collect::<Vec<_>>()[..] {
+        if let [board, turn, castle, ep, _, _] = fen.split(' ').collect::<Vec<_>>()[..] {
             let mut pieces = HashMap::with_capacity(32);
 
             let mut rank = 7u8; // ranks 1-8 correspond to numbers 1-7
@@ -227,29 +225,64 @@ impl Chessboard {
                     file = 0u8;
                 } else {
                     match c {
-                        'r' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Rook); file += 1; },
-                        'n' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Knight); file += 1; },
-                        'b' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Bishop); file += 1; },
-                        'q' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Queen); file += 1; },
-                        'k' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::King); file += 1; },
-                        'p' => { create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Pawn); file += 1; },
+                        'r' => {
+                            create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Rook);
+                            file += 1;
+                        }
+                        'n' => {
+                            create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Knight);
+                            file += 1;
+                        }
+                        'b' => {
+                            create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Bishop);
+                            file += 1;
+                        }
+                        'q' => {
+                            create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Queen);
+                            file += 1;
+                        }
+                        'k' => {
+                            create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::King);
+                            file += 1;
+                        }
+                        'p' => {
+                            create_piece(&mut pieces, [file, rank], Side::Dark, &Piece::Pawn);
+                            file += 1;
+                        }
 
-                        'R' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Rook); file += 1; },
-                        'N' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Knight); file += 1; },
-                        'B' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Bishop); file += 1; },
-                        'Q' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Queen); file += 1; },
-                        'K' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::King); file += 1; },
-                        'P' => { create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Pawn); file += 1; },
-                        _ => panic!("Invalid FEN")
+                        'R' => {
+                            create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Rook);
+                            file += 1;
+                        }
+                        'N' => {
+                            create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Knight);
+                            file += 1;
+                        }
+                        'B' => {
+                            create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Bishop);
+                            file += 1;
+                        }
+                        'Q' => {
+                            create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Queen);
+                            file += 1;
+                        }
+                        'K' => {
+                            create_piece(&mut pieces, [file, rank], Side::Light, &Piece::King);
+                            file += 1;
+                        }
+                        'P' => {
+                            create_piece(&mut pieces, [file, rank], Side::Light, &Piece::Pawn);
+                            file += 1;
+                        }
+                        _ => panic!("Invalid FEN"),
                     }
                 }
             }
 
-
             let turn = match turn {
                 "w" => Side::Light,
                 "b" => Side::Dark,
-                _ => panic!("Invalid FEN Entered")
+                _ => panic!("Invalid FEN Entered"),
             };
 
             let mut light_castle = CastleRights::NoRights;
@@ -262,11 +295,15 @@ impl Chessboard {
                     'Q' => light_castle = light_castle.add_right(CastleRights::QueenSide),
                     'k' => dark_castle = dark_castle.add_right(CastleRights::KingSide),
                     'q' => dark_castle = dark_castle.add_right(CastleRights::QueenSide),
-                    _ => panic!("Invalid FEN")
+                    _ => panic!("Invalid FEN"),
                 }
             }
 
-            let ep = if ep == "-" { None } else { Some(str_to_pos(ep)) };
+            let ep = if ep == "-" {
+                None
+            } else {
+                Some(str_to_pos(ep))
+            };
 
             Chessboard {
                 pieces,
@@ -444,16 +481,12 @@ impl Chessboard {
                 let castle_type = self
                     .castle_rights(piece.data().side)
                     .check_end_pos(end_pos, piece.data().side);
-                let rook_pos = castle_type
-                    .rook_init_pos(piece.data().side)
-                    .unwrap();
+                let rook_pos = castle_type.rook_init_pos(piece.data().side).unwrap();
                 // move the king
                 piece.data_mut().position = end_pos;
 
                 let mut rook = self.pieces.remove(&rook_pos).unwrap();
-                let rook_end_pos = castle_type
-                    .rook_final_pos(piece.data().side)
-                    .unwrap();
+                let rook_end_pos = castle_type.rook_final_pos(piece.data().side).unwrap();
                 rook.data_mut().position = rook_end_pos;
                 self.en_passant = None;
                 // we can only castle once
@@ -522,12 +555,10 @@ impl Chessboard {
     /// This iterates through the entire HashMap to find the king.
     /// There must be a better way
     pub fn king(&self, side: Side) -> Option<&Piece> {
-        self.pieces.values().find(|piece|
-            match piece {
-                Piece::King(data) if data.side == side => true,
-                _ => false
-            }
-        )
+        self.pieces.values().find(|piece| match piece {
+            Piece::King(data) if data.side == side => true,
+            _ => false,
+        })
     }
 
     pub fn possible_moves(&self, side: Side) -> Vec<(&Piece, [u8; 2])> {
@@ -535,7 +566,7 @@ impl Chessboard {
 
         for piece in self.pieces.values() {
             if piece.data().side != side {
-                continue
+                continue;
             }
             for i in 0..8 {
                 for j in 0..8 {

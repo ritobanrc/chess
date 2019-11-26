@@ -153,7 +153,12 @@ impl ChessboardViewSettings {
 }
 
 pub fn rgb_to_decimal(r: u8, g: u8, b: u8) -> [f32; 4] {
-    [f32::from(r)/255.0, f32::from(g)/255.0, f32::from(b)/255.0, 1.0]
+    [
+        f32::from(r) / 255.0,
+        f32::from(g) / 255.0,
+        f32::from(b) / 255.0,
+        1.0,
+    ]
 }
 
 pub struct ChessboardView {

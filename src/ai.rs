@@ -1,4 +1,4 @@
-use crate::chessboard::{Chessboard, Checkmate};
+use crate::chessboard::{Checkmate, Chessboard};
 use crate::piece::{Piece, Side};
 use rayon::prelude::*;
 use std::fmt;
@@ -15,34 +15,54 @@ fn side_sign(side: Side) -> i32 {
 }
 
 pub fn get_best_move(chessboard: &Chessboard, depth: u8) -> (&Piece, [u8; 2]) {
-    //return (chessboard.values().iter().next(), [0, 0])
     //thread::sleep(time::Duration::new(2, 0));
     let possible_moves = chessboard.possible_moves(chessboard.turn);
-    let scores: Vec<_> = possible_moves.par_iter().map(|m| {
-        let mut temp = chessboard.clone();
-        temp.try_move(&m.0, m.1, Some(&Piece::Queen));
-        //println!("Considering Move: {}", SimpleMove(*m));
-        // using 2 billion to avoid overflow when negating
-        -negamax_score(&temp, depth - 1, -2_000_000_000, 2_000_000_000, vec![SimpleMove(*m)])
-    }).collect();
+    let scores: Vec<_> = possible_moves
+        .par_iter()
+        .map(|m| {
+            let mut temp = chessboard.clone();
+            temp.try_move(&m.0, m.1, Some(&Piece::Queen));
+            //println!("Considering Move: {}", SimpleMove(*m));
+            // using 2 billion to avoid overflow when negating
+            -negamax_score(
+                &temp,
+                depth - 1,
+                -2_000_000_000,
+                2_000_000_000,
+                vec![SimpleMove(*m)],
+            )
+        })
+        .collect();
 
-    let display: Vec<_> = possible_moves.iter().map(|a| SimpleMove(*a)).zip(&scores).collect();
+    let display: Vec<_> = possible_moves
+        .iter()
+        .map(|a| SimpleMove(*a))
+        .zip(&scores)
+        .collect();
     println!("{:?}", display);
 
     //if chessboard.turn == MAX_SIDE {
-    scores.iter().zip(possible_moves).max_by(|a, b| a.0.cmp(b.0)).unwrap().1
+    scores
+        .iter()
+        .zip(possible_moves)
+        .max_by(|a, b| a.0.cmp(b.0))
+        .unwrap()
+        .1
     //} else {
-        //scores.iter().zip(possible_moves).min_by(|a, b| a.0.cmp(b.0)).unwrap().1
+    //scores.iter().zip(possible_moves).min_by(|a, b| a.0.cmp(b.0)).unwrap().1
     //}
 }
 
 // The `moves` are just for debugging
-fn negamax_score(chessboard: &Chessboard, depth: u8, mut alpha: i32, beta: i32, moves: Vec<SimpleMove>) -> i32 {
+fn negamax_score(
+    chessboard: &Chessboard,
+    depth: u8,
+    mut alpha: i32,
+    beta: i32,
+    moves: Vec<SimpleMove>,
+) -> i32 {
     if depth == 0 {
         let score = side_sign(chessboard.turn) * heuristic_score(chessboard);
-        if score != 0 {
-            //println!("{:?} {:?} scores {:?}", chessboard.turn, moves, score);
-        }
         return score;
     }
     let mut score = i32::min_value();
@@ -61,7 +81,10 @@ fn negamax_score(chessboard: &Chessboard, depth: u8, mut alpha: i32, beta: i32, 
         let mut moves = moves.clone();
         moves.push(SimpleMove(*m));
 
-        score = i32::max(score, -negamax_score(&temp, depth - 1, -beta, -alpha, moves));
+        score = i32::max(
+            score,
+            -negamax_score(&temp, depth - 1, -beta, -alpha, moves),
+        );
         alpha = i32::max(alpha, score);
         if alpha >= beta {
             break;
@@ -100,7 +123,7 @@ fn piece_value(piece: &Piece) -> i32 {
         Piece::Bishop(_) => 3,
         Piece::Rook(_) => 5,
         Piece::Queen(_) => 9,
-        Piece::King(_) => 0 // both sides should have a king
+        Piece::King(_) => 0, // both sides should have a king
     }
 }
 
@@ -111,12 +134,24 @@ pub struct SimpleMove<'a>(pub (&'a Piece, [u8; 2]));
 impl<'a> fmt::Display for SimpleMove<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SimpleMove((Piece::King(_)  , [rank, file])) => write!(f, "K{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Queen(_) , [rank, file])) => write!(f, "Q{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Rook(_)  , [rank, file])) => write!(f, "R{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Bishop(_), [rank, file])) => write!(f, "B{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Knight(_), [rank, file])) => write!(f, "N{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Pawn(_)  , [rank, file])) => write!(f,  "{}{}", (rank + b'a') as char, file + 1)
+            SimpleMove((Piece::King(_), [rank, file])) => {
+                write!(f, "K{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Queen(_), [rank, file])) => {
+                write!(f, "Q{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Rook(_), [rank, file])) => {
+                write!(f, "R{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Bishop(_), [rank, file])) => {
+                write!(f, "B{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Knight(_), [rank, file])) => {
+                write!(f, "N{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Pawn(_), [rank, file])) => {
+                write!(f, "{}{}", (rank + b'a') as char, file + 1)
+            }
         }
     }
 }
@@ -124,12 +159,24 @@ impl<'a> fmt::Display for SimpleMove<'a> {
 impl fmt::Debug for SimpleMove<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SimpleMove((Piece::King(_)  , [rank, file])) => write!(f, "K{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Queen(_) , [rank, file])) => write!(f, "Q{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Rook(_)  , [rank, file])) => write!(f, "R{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Bishop(_), [rank, file])) => write!(f, "B{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Knight(_), [rank, file])) => write!(f, "N{}{}", (rank + b'a') as char, file + 1),
-            SimpleMove((Piece::Pawn(_)  , [rank, file])) => write!(f,  "{}{}", (rank + b'a') as char, file + 1)
+            SimpleMove((Piece::King(_), [rank, file])) => {
+                write!(f, "K{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Queen(_), [rank, file])) => {
+                write!(f, "Q{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Rook(_), [rank, file])) => {
+                write!(f, "R{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Bishop(_), [rank, file])) => {
+                write!(f, "B{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Knight(_), [rank, file])) => {
+                write!(f, "N{}{}", (rank + b'a') as char, file + 1)
+            }
+            SimpleMove((Piece::Pawn(_), [rank, file])) => {
+                write!(f, "{}{}", (rank + b'a') as char, file + 1)
+            }
         }
     }
 }

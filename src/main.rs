@@ -3,6 +3,9 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate rayon;
+#[macro_use]
+extern crate lazy_static;
+extern crate rand;
 
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::*;
@@ -10,12 +13,13 @@ use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
 
+mod ai;
 mod chessboard;
 mod chessboard_controller;
 mod chessboard_view;
 mod piece;
 mod sidebar;
-mod ai;
+mod table;
 
 use crate::chessboard::Chessboard;
 use crate::chessboard_controller::ChessboardController;
@@ -40,7 +44,9 @@ fn main() {
         .unwrap();
 
     //let chessboard = Chessboard::from_fen(String::from("8/8/8/3K4/8/8/1r3k2/6r1 w - - 0 1"));
-    let chessboard = Chessboard::from_fen(String::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+    let chessboard = Chessboard::from_fen(String::from(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    ));
     let view_settings = { ChessboardViewSettings::new() };
     let view = ChessboardView::new(view_settings);
     let mut controller = ChessboardController::new(chessboard);
