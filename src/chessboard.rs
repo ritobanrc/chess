@@ -561,6 +561,8 @@ impl Chessboard {
         })
     }
 
+    // TODO: Make this return an iterator so we don't actually calculate everything if we don't
+    // need to.
     pub fn possible_moves(&self, side: Side) -> Vec<(&Piece, [u8; 2])> {
         let mut moves = Vec::new();
 

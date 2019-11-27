@@ -16,6 +16,9 @@ lazy_static! {
     };
 }
 
+/// The number of clusters in the TranspositionTable
+const TT_SIZE: usize = 16384;
+
 
 fn piece_id(p: &Piece) -> usize {
     match p {
@@ -89,7 +92,8 @@ impl Chessboard {
 }
 
 /// Used to determine the accuracy of the score.
-enum Flag {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Flag {
     /// The score is exact, after having searched all possible moves.
     /// This corresponds to the principle variation (PV)
     Exact,
@@ -100,10 +104,97 @@ enum Flag {
     Alpha,
 }
 
-struct Entry {
-    hash: u64,
-    depth: u8, 
-    score: i32,
-    flag: Flag,
-    age: u8,
+#[derive(Clone, Debug)]
+pub struct TTEntry {
+    pub hash: u64,
+    pub depth: u8, 
+    pub score: i32,
+    pub flag: Flag,
+    // TODO: Stop storing positions as [u8; 2] because that uses a crap ton of unnecessary memory
+    // TODO: Refactor everything so you have a "move" type to work with
+    // TODO: Figure out what to do with this
+    //best_move: [u8; 4],
+    pub age: u8,
+}
+
+impl TTEntry {
+    /// Creates a new TTEntry with all fields 0, and flag Exact, except the hash
+    /// This should only be used if the fields are going to be populated immediately afterwards
+    pub fn new(chessboard: &Chessboard) -> TTEntry {
+        TTEntry {
+            hash: chessboard.zobrist_hash(),
+            depth: 0,
+            score: 0,
+            flag: Flag::Exact,
+            age: 0,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct Bucket {
+    entries: [Option<TTEntry>; 4],
+}
+
+impl Bucket {
+    pub const fn empty() -> Bucket {
+        Bucket {
+            entries: [None, None, None, None],
+        }
+    }
+}
+
+pub struct TranspositionTable {
+    buckets: Vec<Bucket>,
+}
+
+impl TranspositionTable {
+    pub fn new() -> TranspositionTable {
+        TranspositionTable {
+            buckets: vec![Bucket::empty(); TT_SIZE],
+        }
+    }
+
+    pub fn store(&mut self, entry: TTEntry) {
+        let bucket = &mut self.buckets[(entry.hash % TT_SIZE as u64) as usize];
+
+        // If it's already in the buckets, replace it
+        for stored_entry_option in &mut bucket.entries {
+            if let Some(stored_entry) = stored_entry_option {
+                if stored_entry.hash == entry.hash {
+                    // replace it
+                    *stored_entry_option = Some(entry);
+                    return;
+                }
+            }
+        }
+
+        // If we didn't return, that means we need to store in a None location
+        for stored_entry_option in &mut bucket.entries {
+            if stored_entry_option.is_none() {
+                *stored_entry_option = Some(entry);
+                return;
+            }
+        }
+
+        // TODO: Proper error handling, don't panic
+        // TODO: Don't iteearate over the bucket twice
+        panic!("More than 4 zobrist hash collisions: {:?}", entry);
+    }
+
+    pub fn get(&self, chessboard: &Chessboard) -> Option<&TTEntry> {
+        // TODO: Incrementally update this hash
+        let hash = chessboard.zobrist_hash();
+        // I'm not sure if we need to do the modulus in u64
+        let bucket = &self.buckets[(hash % TT_SIZE as u64) as usize];
+
+        for entry in &bucket.entries {
+            if let Some(entry) = entry {
+                if entry.hash == hash {
+                    return Some(entry)
+                }
+            }
+        }
+        None
+    }
 }

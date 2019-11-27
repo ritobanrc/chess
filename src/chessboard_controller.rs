@@ -1,13 +1,14 @@
 use crate::ai;
 use crate::chessboard::{Checkmate, Chessboard, MoveResult};
 use crate::piece::{Piece, PieceData, Side};
+use crate::table::TranspositionTable;
 use crate::sidebar::Sidebar;
 use crate::{BOARD_BORDER_SIZE, BOARD_SIZE, HEIGHT};
 use drag_controller::{Drag, DragController};
 use graphics::Image;
 use piston::input::GenericEvent;
 use std::fmt::Write;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
 
 static AI_LEVEL: u8 = 4;
@@ -102,7 +103,7 @@ pub struct ChessboardController {
     dark_check: bool,
     pub game_result: (Checkmate, Side),
     ai_rx: Option<mpsc::Receiver<(&'static Piece, [u8; 2])>>,
-    temp_stored_hash: u64,
+    tt: Option<Arc<RwLock<TranspositionTable>>>,
     chessboard: Chessboard,
 }
 
@@ -124,7 +125,10 @@ impl ChessboardController {
             // worth it
             game_result: (Checkmate::Nothing, Side::Light),
             ai_rx: None,
-            temp_stored_hash: chessboard.zobrist_hash(),
+            tt: match AI { 
+                true => Some(Arc::new(RwLock::new(TranspositionTable::new()))),
+                false => None,
+            },
             chessboard,
         }
     }
@@ -197,7 +201,6 @@ impl ChessboardController {
         // get the chessboard, tell it to try the move.
         let piece  = &self.piece_rects[idx].piece;
 
-        println!("{:?}", Chessboard::update_hash(self.temp_stored_hash, piece, pos));
 
         let move_result = self
             .chessboard
@@ -257,9 +260,6 @@ impl ChessboardController {
             }
         };
 
-        self.temp_stored_hash = self.chessboard.zobrist_hash();
-        println!("{:?}", self.temp_stored_hash);
-
         self.game_result = (self.chessboard.is_checkmated(side.other()), side);
         match self.game_result.0 {
             Checkmate::Checkmate => {
@@ -300,10 +300,12 @@ impl ChessboardController {
             // chess work.
             let chessboard = ChessboardPtr(&self.chessboard as *const Chessboard);
 
+            let tt = Arc::clone(&self.tt.as_ref().unwrap());
+
             //let best_move = rx.recv().unwrap();
             thread::spawn(move || {
                 let chessboard = unsafe { &(*chessboard.0) };
-                let best_move = ai::get_best_move(chessboard, AI_LEVEL);
+                let best_move = ai::get_best_move(chessboard, AI_LEVEL, tt);
                 use ai::SimpleMove;
                 println!("Found best Move: {:?}", SimpleMove(best_move));
                 tx.send(best_move).unwrap();

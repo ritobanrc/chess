@@ -1,7 +1,9 @@
 use crate::chessboard::{Checkmate, Chessboard};
 use crate::piece::{Piece, Side};
+use crate::table::{TranspositionTable, TTEntry, Flag};
 use rayon::prelude::*;
 use std::fmt;
+use std::sync::{Arc, RwLock};
 
 const MAX_SIDE: Side = Side::Light;
 const MIN_SIDE: Side = Side::Dark;
@@ -14,7 +16,7 @@ fn side_sign(side: Side) -> i32 {
     }
 }
 
-pub fn get_best_move(chessboard: &Chessboard, depth: u8) -> (&Piece, [u8; 2]) {
+pub fn get_best_move(chessboard: &Chessboard, depth: u8, tt: Arc<RwLock<TranspositionTable>>) -> (&Piece, [u8; 2]) {
     //thread::sleep(time::Duration::new(2, 0));
     let possible_moves = chessboard.possible_moves(chessboard.turn);
     let scores: Vec<_> = possible_moves
@@ -30,6 +32,7 @@ pub fn get_best_move(chessboard: &Chessboard, depth: u8) -> (&Piece, [u8; 2]) {
                 -2_000_000_000,
                 2_000_000_000,
                 vec![SimpleMove(*m)],
+                Arc::clone(&tt),
             )
         })
         .collect();
@@ -58,22 +61,42 @@ fn negamax_score(
     chessboard: &Chessboard,
     depth: u8,
     mut alpha: i32,
-    beta: i32,
-    moves: Vec<SimpleMove>,
+    mut beta: i32,
+    moves: Vec<SimpleMove>, // TODO: Get rid of this, we can get the Principle Variation from the TranspositionTable
+    tt: Arc<RwLock<TranspositionTable>>
 ) -> i32 {
+    let init_alpha = alpha;
+
+    let tt_guard = tt.read().unwrap();
+    let entry = tt_guard.get(&chessboard);
+    if let Some(entry) = entry {
+        match entry.flag {
+            Flag::Exact => return entry.score,
+            Flag::Alpha => alpha = i32::max(alpha, entry.score),
+            Flag::Beta => beta = i32::min(beta, entry.score),
+        }
+
+        if alpha >= beta {
+            return entry.score;
+        }
+    }
+    // Do this up here to free the RwLock immediately, instead of holdig onto it while we continue
+    // to do work.
+    let mut entry = entry.cloned().unwrap_or_else(|| TTEntry::new(&chessboard));
+    drop(tt_guard);
+
     if depth == 0 {
         let score = side_sign(chessboard.turn) * heuristic_score(chessboard);
         return score;
     }
     let mut score = i32::min_value();
     let possible_moves = chessboard.possible_moves(chessboard.turn);
+
     if possible_moves.is_empty() {
         let score = side_sign(chessboard.turn) * heuristic_score(chessboard);
-        //println!("{:?} scores {:?}", moves, score);
         return score;
     }
-    //println!("Called Negamax. {:?} to move", chessboard.turn);
-    //let final_move: &(&Piece, [u8; 2]);
+
     for m in possible_moves.iter() {
         let mut temp = chessboard.clone();
         temp.try_move(&m.0, m.1, Some(&Piece::Queen));
@@ -83,13 +106,25 @@ fn negamax_score(
 
         score = i32::max(
             score,
-            -negamax_score(&temp, depth - 1, -beta, -alpha, moves),
+            -negamax_score(&temp, depth - 1, -beta, -alpha, moves, Arc::clone(&tt)),
         );
         alpha = i32::max(alpha, score);
         if alpha >= beta {
             break;
         }
     }
+
+    entry.score = score;
+    if score <= init_alpha {
+        entry.flag = Flag::Alpha;
+    } else if score >= beta {
+        entry.flag = Flag::Beta;
+    } else {
+        entry.flag = Flag::Exact;
+    }
+    entry.depth = depth;
+    tt.write().unwrap().store(entry);
+
     score
 }
 
