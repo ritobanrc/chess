@@ -17,7 +17,7 @@ lazy_static! {
 }
 
 /// The number of clusters in the TranspositionTable
-const TT_SIZE: usize = 16384;
+const TT_SIZE: usize = 16777216;
 
 
 fn piece_id(p: &Piece) -> usize {
@@ -144,6 +144,7 @@ impl Bucket {
     }
 }
 
+#[derive(Debug)]
 pub struct TranspositionTable {
     buckets: Vec<Bucket>,
 }
@@ -158,28 +159,30 @@ impl TranspositionTable {
     pub fn store(&mut self, entry: TTEntry) {
         let bucket = &mut self.buckets[(entry.hash % TT_SIZE as u64) as usize];
 
+        let mut location_to_store: Option<usize> = None;
         // If it's already in the buckets, replace it
-        for stored_entry_option in &mut bucket.entries {
-            if let Some(stored_entry) = stored_entry_option {
-                if stored_entry.hash == entry.hash {
-                    // replace it
-                    *stored_entry_option = Some(entry);
-                    return;
+        for (i, stored_entry_option) in bucket.entries.iter().enumerate() {
+            match stored_entry_option {
+                None => {
+                    location_to_store = Some(i);
+                    break;
+                },
+                Some(stored_entry) => {
+                    // we haven't encountered a "None" yet.
+                    // The new entry is more valuable, so we are allowed to overwrite it in the TT
+                    // There is a potential situation where there are multiple old entries.
+                    // The ideal thing to do here would be to replace the one with the LEAST depth
+                    // But that hasn't been implemented. Instead, this just replaces the LAST one.
+                    if entry.depth > stored_entry.depth {
+                        location_to_store = Some(i);
+                    }
                 }
             }
         }
 
-        // If we didn't return, that means we need to store in a None location
-        for stored_entry_option in &mut bucket.entries {
-            if stored_entry_option.is_none() {
-                *stored_entry_option = Some(entry);
-                return;
-            }
+        if let Some(i) = location_to_store {
+            bucket.entries[i] = Some(entry);
         }
-
-        // TODO: Proper error handling, don't panic
-        // TODO: Don't iteearate over the bucket twice
-        panic!("More than 4 zobrist hash collisions: {:?}", entry);
     }
 
     pub fn get(&self, chessboard: &Chessboard) -> Option<&TTEntry> {

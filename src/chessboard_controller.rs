@@ -11,7 +11,7 @@ use std::fmt::Write;
 use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
 
-static AI_LEVEL: u8 = 4;
+static AI_LEVEL: u8 = 6;
 static AI_SIDE: Side = Side::Dark;
 static AI: bool = true;
 

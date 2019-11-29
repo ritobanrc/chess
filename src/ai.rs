@@ -45,6 +45,7 @@ pub fn get_best_move(chessboard: &Chessboard, depth: u8, tt: Arc<RwLock<Transpos
     println!("{:?}", display);
 
     //if chessboard.turn == MAX_SIDE {
+    //println!("{:?}", tt);
     scores
         .iter()
         .zip(possible_moves)
