@@ -42,6 +42,24 @@ pub fn get_best_move(chessboard: &Chessboard, depth: u8, tt: Arc<RwLock<Transpos
         .map(|a| SimpleMove(*a))
         .zip(&scores)
         .collect();
+
+    let tt_guard = tt.read().unwrap();
+
+    let mut pv = Vec::new();
+    let mut hash = chessboard.zobrist_hash();
+
+    while let Some(entry) = tt_guard.get_for_hash(hash) {
+        if let Some(best_move) = &entry.best_move {
+            pv.push(best_move);
+            hash = Chessboard::update_hash(hash, &best_move);
+        } else {
+            break
+        }
+    }
+
+    println!("PV: {:?}", pv);
+    drop(tt_guard);
+
     println!("{:?}", display);
 
     //if chessboard.turn == MAX_SIDE {
@@ -72,7 +90,10 @@ fn negamax_score(
     let entry = tt_guard.get(&chessboard);
     if let Some(entry) = entry {
         match entry.flag {
-            Flag::Exact => return entry.score,
+            Flag::Exact => {
+                println!("TT Hit: {:?}", moves);
+                return entry.score
+            },
             Flag::Alpha => alpha = i32::max(alpha, entry.score),
             Flag::Beta => beta = i32::min(beta, entry.score),
         }
@@ -91,6 +112,7 @@ fn negamax_score(
         return score;
     }
     let mut score = i32::min_value();
+    let mut best_move = None;
     let possible_moves = chessboard.possible_moves(chessboard.turn);
 
     if possible_moves.is_empty() {
@@ -105,10 +127,18 @@ fn negamax_score(
         let mut moves = moves.clone();
         moves.push(SimpleMove(*m));
 
-        score = i32::max(
-            score,
-            -negamax_score(&temp, depth - 1, -beta, -alpha, moves, Arc::clone(&tt)),
-        );
+        let new_score = -negamax_score(&temp, depth - 1, -beta, -alpha, moves, Arc::clone(&tt));
+
+        if new_score > score {
+            use crate::table::{piece_id, TTMove};
+            score = new_score;
+            best_move = Some(TTMove {
+                piece_id: piece_id(m.0),
+                start_pos: m.0.data().position,
+                end_pos: m.1,
+            });
+        }
+
         alpha = i32::max(alpha, score);
         if alpha >= beta {
             break;
@@ -116,6 +146,7 @@ fn negamax_score(
     }
 
     entry.score = score;
+    entry.best_move = best_move;
     if score <= init_alpha {
         entry.flag = Flag::Alpha;
     } else if score >= beta {

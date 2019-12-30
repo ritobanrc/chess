@@ -20,7 +20,7 @@ lazy_static! {
 const TT_SIZE: usize = 16777216;
 
 
-fn piece_id(p: &Piece) -> usize {
+pub fn piece_id(p: &Piece) -> usize {
     match p {
         Piece::Pawn(PieceData {
             position: _,
@@ -83,10 +83,9 @@ impl Chessboard {
         result
     }
 
-    pub fn update_hash(mut prev: u64, piece: &Piece, pos: [u8; 2]) -> u64 {
-        let old_pos = piece.data().position;
-        prev ^= TABLE[(old_pos[0] * 8 + old_pos[1]) as usize][piece_id(piece)];
-        prev ^= TABLE[(pos[0] * 8 +  pos[1]) as usize][piece_id(piece)];
+    pub fn update_hash(mut prev: u64, m: &TTMove) -> u64 {
+        prev ^= TABLE[(m.start_pos[0] * 8 + m.start_pos[1]) as usize][m.piece_id];
+        prev ^= TABLE[(m.end_pos[0] * 8 +  m.end_pos[1]) as usize][m.piece_id];
         prev
     }
 }
@@ -104,6 +103,15 @@ pub enum Flag {
     Alpha,
 }
 
+// This is how the best move is stored in the TranspositionTable
+#[derive(Clone, Debug)]
+pub struct TTMove {
+    pub piece_id: usize,
+    pub start_pos: [u8; 2],
+    pub end_pos: [u8; 2],
+}
+
+
 #[derive(Clone, Debug)]
 pub struct TTEntry {
     pub hash: u64,
@@ -113,7 +121,7 @@ pub struct TTEntry {
     // TODO: Stop storing positions as [u8; 2] because that uses a crap ton of unnecessary memory
     // TODO: Refactor everything so you have a "move" type to work with
     // TODO: Figure out what to do with this
-    //best_move: [u8; 4],
+    pub best_move: Option<TTMove>,
     pub age: u8,
 }
 
@@ -126,6 +134,7 @@ impl TTEntry {
             depth: 0,
             score: 0,
             flag: Flag::Exact,
+            best_move: None,
             age: 0,
         }
     }
@@ -187,7 +196,11 @@ impl TranspositionTable {
 
     pub fn get(&self, chessboard: &Chessboard) -> Option<&TTEntry> {
         // TODO: Incrementally update this hash
-        let hash = chessboard.zobrist_hash();
+        self.get_for_hash(chessboard.zobrist_hash())
+    }
+
+
+    pub fn get_for_hash(&self, hash: u64) -> Option<&TTEntry> {
         // I'm not sure if we need to do the modulus in u64
         let bucket = &self.buckets[(hash % TT_SIZE as u64) as usize];
 
@@ -198,6 +211,7 @@ impl TranspositionTable {
                 }
             }
         }
+
         None
     }
 }
